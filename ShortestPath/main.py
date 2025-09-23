@@ -11,7 +11,7 @@ import platform
 
 if platform.system() == "Darwin":
     # 서버 주소 및 포트
-    URI = "ws://127.0.0.1:5002"
+    FLASK_URI = "ws://127.0.0.1:5002"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
@@ -20,14 +20,9 @@ if platform.system() == "Darwin":
     MODEL_PATH = "/Users/kyumin/python-application/carDetection/PCS-model/yolov8_v3/weights/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttys035"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttys037"
-    SERIAL_PORT3 = "/dev/ttys037"
 elif platform.system() == "Linux":
     # 서버 주소 및 포트
-    URI = "ws://192.168.0.41:5002"
+    FLASK_URI = "ws://192.168.0.41:5002"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
@@ -36,14 +31,9 @@ elif platform.system() == "Linux":
     MODEL_PATH = "/workspace/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 송수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttyTHS0"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttyACM0"
-    SERIAL_PORT3 = "/dev/ttyACM1"
 elif platform.system() == "Windows":
     # 서버 주소 및 포트
-    URI = "http://127.0.0.1:5002"
+    FLASK_URI = "http://127.0.0.1:5002"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
@@ -52,11 +42,6 @@ elif platform.system() == "Windows":
     MODEL_PATH = "/workspace/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 송수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttyTHS0"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttyACM0"
-    SERIAL_PORT3 = "/dev/ttyACM1"
 
 # 프로그램 종료 플래그
 stop_event = threading.Event()
@@ -69,9 +54,9 @@ route_data_queue = queue.Queue()
 
 # 쓰레드 생성
 thread1 = threading.Thread(target=yolo_deep_sort.main, kwargs={"yolo_data_queue": yolo_data_queue, "event": init_event, "model_path": MODEL_PATH, "video_source": VIDEO_SOURCE})
-thread2 = threading.Thread(target=sr.main, kwargs={"yolo_data_queue": yolo_data_queue, "car_number_data_queue": car_number_data_queue, "route_data_queue": route_data_queue, "event": init_event, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH, "serial_port": SERIAL_PORT})
-thread3 = threading.Thread(target=uart.get_car_number, kwargs={"car_number_data_queue": car_number_data_queue, "serial_port": SERIAL_PORT})
-thread4 = threading.Thread(target=server.send_to_server, kwargs={"uri": URI, "route_data_queue": route_data_queue, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH, "serial_port": SERIAL_PORT2, "serial_port2": SERIAL_PORT3})
+thread2 = threading.Thread(target=sr.main, kwargs={"yolo_data_queue": yolo_data_queue, "car_number_data_queue": car_number_data_queue, "route_data_queue": route_data_queue, "event": init_event, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
+thread3 = threading.Thread(target=uart.get_car_number, kwargs={"car_number_data_queue": car_number_data_queue})
+thread4 = threading.Thread(target=server.send_to_server, kwargs={"uri": FLASK_URI, "route_data_queue": route_data_queue, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
 
 # 쓰레드 시작
 thread1.start()
