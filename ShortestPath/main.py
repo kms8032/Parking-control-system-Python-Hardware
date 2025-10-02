@@ -55,7 +55,7 @@ route_data_queue = queue.Queue()
 # 쓰레드 생성
 thread1 = threading.Thread(target=yolo_deep_sort.main, kwargs={"yolo_data_queue": yolo_data_queue, "event": init_event, "model_path": MODEL_PATH, "video_source": VIDEO_SOURCE})
 thread2 = threading.Thread(target=sr.main, kwargs={"yolo_data_queue": yolo_data_queue, "car_number_data_queue": car_number_data_queue, "route_data_queue": route_data_queue, "event": init_event, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
-thread3 = threading.Thread(target=uart.get_car_number, kwargs={"car_number_data_queue": car_number_data_queue})
+thread3 = threading.Thread(target=uart.get_car_number, kwargs={"uri": FLASK_URI, "car_number_data_queue": car_number_data_queue})
 thread4 = threading.Thread(target=server.send_to_server, kwargs={"uri": FLASK_URI, "route_data_queue": route_data_queue, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
 
 # 쓰레드 시작
