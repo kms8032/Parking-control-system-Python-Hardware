@@ -4,6 +4,7 @@ import queue
 import json
 import numpy as np
 import cv2
+import platform
 
 # 웹 페이지 각 구역 좌표
 web_coordinates = {
@@ -89,10 +90,9 @@ def reflect_point_in_rectangle(point, rectangle_corners):
 
 
 # 경로에 따라 라즈베리파이에 전송할 데이터 생성
-def set_rpi_data(route, value):
+def set_rpi_data(route, value, target_ip):
     display_area = walking_space[route[1]]
     next_area = walking_space[route[2]]
-    display_area_id = DISPLAY_SPACE.index(route[1]) + 1
 
     display_center = calculate_center(display_area["position"])
     next_center = calculate_center(next_area["position"])
@@ -100,16 +100,16 @@ def set_rpi_data(route, value):
     delta_x = abs(display_center[0] - next_center[0])
     delta_y = abs(display_center[1] - next_center[1])
 
-    if delta_x > delta_y:  # X 축 이동
-        if display_center[0] < next_center[0]:
-            rpi_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "left"}
-        else:
-            rpi_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "right"}
-    else:  # Y 축 이동
-        if display_center[1] < next_center[1]:
-            rpi_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "up"}
-        else:
-            rpi_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "down"}
+    # target_ip를 키로 데이터 저장
+    rpi_data[target_ip] = {
+        "car_number": value.get("car_number", "No Number"),
+        "direction": (
+            "left" if delta_x > delta_y and display_center[0] < next_center[0] else
+            "right" if delta_x > delta_y else
+            "up" if display_center[1] < next_center[1] else
+            "down"
+        )
+    }
 
 
 def cal_web_position(space_id, car_id, cars):
@@ -126,20 +126,11 @@ def cal_web_position(space_id, car_id, cars):
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=5, reconnection_delay=2)
 
-@sio.event
-def connect():
-    print("Connected to server")
-
-@sio.event
-def disconnect():
-    print("Disconnected from server")
-
-
 # ----------------- 메인 함수 -----------------
 def send_to_server(uri, route_data_queue, parking_space_path, walking_space_path):
     """
     기존에는 아두이노로 시리얼 전송을 했지만,
-    이제는 LAN/WebSocket을 통해 라즈베리파이 및 Express 서버로 데이터 전송
+    이제는 LAN/WebSocket을 통해 라즈베리파이 및 Express 서버, Flask 서버로 데이터 전송
     """
     global rpi_data, previous_rpi_data, walking_space
 
@@ -200,25 +191,35 @@ def send_to_server(uri, route_data_queue, parking_space_path, walking_space_path
                 if route and len(route) > 2 and route[1] in DISPLAY_SPACE:
                     display_area_id = DISPLAY_SPACE.index(route[1]) + 1
                     if display_area_id not in processed_display_areas:
-                        set_rpi_data(route, value)
+                        set_rpi_data(route, value, target_ip)
                         processed_display_areas.add(display_area_id)
 
             print(f"Raspberry Pi data: {rpi_data}")
+            print(f"Raspberry Pi data: {previous_rpi_data}")
+
+            if previous_rpi_data != rpi_data:
+                previous_rpi_data = rpi_data.copy()
+                if platform.system() == "Linux":
+                    for target_ip, data in rpi_data.items():
+                        sio.emit("rpi_data", {target_ip: data})
+                        print(f"Sent to {target_ip}: {data}")
 
         except queue.Empty:
             time.sleep(1)
             continue
 
+# 테스트 코드
 if __name__ == "__main__":
-    sio.connect(uri)
+
+    url = "http://192.168.0.10:5002"
+    sio.connect(url)
 
     rpi_data = {
-        2: {"car_number": "12가3456", "direction": "right"},
-        4: {"car_number": "34나7890", "direction": "down"},
-        7: {"car_number": "56다1234", "direction": "left"}
+    "192.168.0.30": {"car_number": "1234", "direction": "left"},
+    "192.168.0.31": {"car_number": "5678", "direction": "down"}
     }
 
     while True:
-        sio.emit("message", rpi_data)
-        print("Data sent:", rpi_data)
-        time.sleep(2)
+        sio.emit("rpi_data", rpi_data)
+        print("Sent : ", rpi_data)
+        time.sleep(2) 
