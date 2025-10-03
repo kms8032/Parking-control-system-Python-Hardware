@@ -16,7 +16,7 @@ clients = {}
 
 # Express  서버로 연결할 클라이언트
 express_sio = socketio_client.Client()
-express_sio.connect('http://127.0.0.1:3000')
+express_sio.connect('http://192.168.0.20:3000')
 
 @express_sio.event
 def connect():
@@ -29,13 +29,11 @@ def disconnect():
 # 클라이언트에서 연결되었을 때 처리하는 이벤트
 @flask_sio.on('connect')
 def handle_connect():
-    print('Client connected')
-    def handle_connect():
-        ip = request.remote_addr
-        sid = request.sid
-        clients[ip] = sid
-        print(f"Client connected: {ip} -> {sid}")
-        emit("message", {'data': 'Connected to server'})
+	ip = request.remote_addr
+	sid = request.sid
+	clients[ip] = sid
+	print(f"Client connected: {ip} -> {sid}")
+	emit("message", {'data': 'Connected to server'})
 
 # 클라이언트에서 보내는 기본 메세지 처리
 @flask_sio.on('message')
@@ -61,7 +59,4 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     # Flask-SocketIO는 일반 Flask와 다르게 socketio.run()을 사용해 서버를 실행합니다.
-    if platform.system() == "Linux":
-        flask_sio.run(app, host='0.0.0.0', port=5002, debug=True)
-    else:
-        flask_sio.run(app, host='127.0.0.1', port=5002, debug=True)
+    flask_sio.run(app, host='0.0.0.0', port=5002, debug=True)

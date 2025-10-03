@@ -208,18 +208,3 @@ def send_to_server(uri, route_data_queue, parking_space_path, walking_space_path
             time.sleep(1)
             continue
 
-# 테스트 코드
-if __name__ == "__main__":
-
-    url = "http://192.168.0.10:5002"
-    sio.connect(url)
-
-    rpi_data = {
-    "192.168.0.30": {"car_number": "1234", "direction": "left"},
-    "192.168.0.31": {"car_number": "5678", "direction": "down"}
-    }
-
-    while True:
-        sio.emit("rpi_data", rpi_data)
-        print("Sent : ", rpi_data)
-        time.sleep(2) 
