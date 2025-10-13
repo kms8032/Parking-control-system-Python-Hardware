@@ -92,40 +92,68 @@ def is_point_in_rectangle(point, rectangle):
 
 
 # Function to detect objects and track using DeepSORT and YOLO
+# Function to detect objects and track using DeepSORT and YOLO
 def detect_objects_with_spaces(video_source, model_path, parking_file, walking_file, device):
-    # Load the YOLO model
-    model = YOLO(model_path)
+    import platform
+    import cv2
+    import numpy as np
+    from deep_sort_realtime.deepsort_tracker import DeepSort
+    from ultralytics import YOLO
 
-    # Initialize video capture
+    # Jetson Orin + USB 카메라용 GStreamer 파이프라인 함수
+    def gstreamer_pipeline(
+        device="/dev/video0",
+        capture_width=1280,
+        capture_height=720,
+        display_width=1280,
+        display_height=720,
+        framerate=30
+    ):
+        return (
+            f"v4l2src device={device} ! "
+            f"video/x-raw, width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+            f"videoconvert ! "
+            f"videoscale ! "
+            f"video/x-raw, width={display_width}, height={display_height}, format=BGR ! appsink"
+        )
+
+    # 카메라 초기화 (Jetson Orin 전용 GStreamer 파이프라인)
     if platform.system() == "Linux":
-        cap = cv2.VideoCapture(video_source, cv2.CAP_V4L2)
+        cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+        if not cap.isOpened():
+            print("Failed to open camera with GStreamer pipeline.")
+            print(" Check device index using: ls /dev/video*")
+            return
     else:
         cap = cv2.VideoCapture(video_source)
+
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 560)
 
-    # Load parking and walking space data
+    # 모델 로드 (YOLOv8)
+    model = YOLO(model_path)
+
+    # DeepSORT 초기화
+    tracker = DeepSort(max_age=70, n_init=5, max_iou_distance=1, nn_budget=150)
+
+    # JSON 파일에서 주차/이동 공간 정보 로드
     parking_data = load_json(parking_file)
     walking_data = load_json(walking_file)
 
-    # Initialize DeepSORT tracker
-    tracker = DeepSort(max_age=70, n_init=5, max_iou_distance=1, nn_budget=150)
+    print("Tracking start... Press 'q' to exit window.")
 
     while True:
         ret, frame = cap.read()
-        if not ret:
-            print("Failed to capture image")
+        if not ret or frame is None:
+            print("Cam Error — Frame capture failed.")
             break
 
-        # Draw parking and walking spaces on a copy of the frame
-        frame_with_spaces = frame.copy()
-        frame_with_spaces = draw_spaces(frame_with_spaces, parking_data, walking_data)
-
-        # Perform object detection with YOLOv8
+        # YOLO 추론 (CUDA 사용)
         results = model(frame, device=device)
         detections = results[0]
         dets = []
 
+        # 탐지된 객체 처리
         if detections.boxes is not None:
             for data in detections.boxes.data.tolist():
                 conf = float(data[4])
@@ -135,43 +163,44 @@ def detect_objects_with_spaces(video_source, model_path, parking_file, walking_f
                 label = int(data[5])
                 dets.append([[xmin, ymin, xmax - xmin, ymax - ymin], conf, label])
 
-        # Update tracks using DeepSORT
+        # DeepSORT 추적기 업데이트
         tracks = tracker.update_tracks(dets, frame=frame)
 
-        # Midpoint와 공간 이름 확인
+        # 프레임 복제 (디스플레이용)
+        frame_with_spaces = frame.copy()
+        frame_with_spaces = draw_spaces(frame_with_spaces, parking_data, walking_data)
+
+        # 트래킹된 객체 반복
         for track in tracks:
             if not track.is_confirmed():
                 continue
             track_id = track.track_id
             ltrb = track.to_ltrb()
-            xmin, ymin, xmax, ymax = int(ltrb[0]), int(ltrb[1]), int(ltrb[2]), int(ltrb[3])
+            xmin, ymin, xmax, ymax = map(int, ltrb)
 
-            # Calculate the midpoint of the bounding box
+            # 중심 좌표 계산
             midpoint = ((xmin + xmax) // 2, (ymin + ymax) // 2)
-            print(f"Track ID {track_id} Midpoint: {midpoint}")
-
-            # Check if the midpoint is inside any parking or walking space with buffer
             space_name = check_point_in_space(midpoint, parking_data, walking_data, buffer=1)
 
-            # Draw the bounding box and label for tracked objects in green
+            # 박스 및 텍스트 표시
             cv2.rectangle(frame_with_spaces, (xmin, ymin), (xmax, ymax), GREEN, 2)
             cv2.rectangle(frame_with_spaces, (xmin, ymin - 20), (xmin + 20, ymin), GREEN, -1)
-            cv2.putText(frame_with_spaces, str(track_id), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 2)
-
-            # Draw the midpoint and label it with the space name if it is inside a space
+            cv2.putText(frame_with_spaces, str(track_id),
+                        (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, WHITE, 2)
             cv2.circle(frame_with_spaces, midpoint, 5, GREEN, -1)
+
             if space_name:
-                cv2.putText(frame_with_spaces, f"In {space_name}", (midpoint[0], midpoint[1] - 10),
+                cv2.putText(frame_with_spaces, f"In {space_name}",
+                            (midpoint[0], midpoint[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, YELLOW, 2)
                 print(f"Track ID {track_id} is in {space_name}")
 
-        # Show the frame with both parking spaces and detected vehicles
+        # 결과 화면 표시
         cv2.imshow('Parking and Walking Spaces with Tracking', frame_with_spaces)
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("Exiting tracking window.")
             break
 
+    # ✅ 리소스 해제
     cap.release()
     cv2.destroyAllWindows()
-
-
-
