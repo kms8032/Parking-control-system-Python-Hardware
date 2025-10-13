@@ -16,11 +16,11 @@ walking_space = {}
 # 이동 구역의 인접한 주차 구역 리스트
 walking_space_near_parking = [[-1], [0, ], [1, 2, 3], [4, 5, 14], [6, 7], [8, 9, 15, 16], [], [], [17, 18], [10, 11], [12, 13, 19, 20], [], [], [21], []]
 
-# 주차 구역의 이름 리스트 (A1, A2, ..., D8)
+# 주차 구역의 이름 리스트 (A1, A2, ..., D9)
 parking_zone_names = [
     "A1", "A2", "A3", "A4", "A5", "A6", "B1", "B2", "B3", "B4",
     "C1", "C2", "C3", "C4", "D1", "D2", "D3", "D4", "D5", "D6",
-    "D7", "D8"
+    "D7", "D8", "D9"
 ]
 
 # 이동 구역의 이름 리스트 (Entry, Path, Exit, etc.)
@@ -75,7 +75,7 @@ while True:
     choice = input("Choose zone type (1: parking_space, 2: walking_space): ")
     if choice == '1':
         space_type = "parking_space"
-        max_zones = 22
+        max_zones = 23
         zone_names = parking_zone_names
         break
     elif choice == '2':
