@@ -7,23 +7,43 @@ from ultralytics import YOLO
 import platform
 import torch
 
-def main(yolo_data_queue, event, model_path, video_source=0):
 
+# Jetson Orin + USB 카메라용 GStreamer 파이프라인 함수
+def gstreamer_pipeline(
+    device="/dev/video0",
+    capture_width=1280,
+    capture_height=720,
+    display_width=1280,
+    display_height=720,
+    framerate=30
+):
+    return (
+        f"v4l2src device={device} ! "
+        f"video/x-raw, width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        f"videoconvert ! "
+        f"videoscale ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGR ! appsink"
+    )
+
+
+def main(yolo_data_queue, event, model_path, video_source=0):
     model = YOLO(model_path)
 
     device = None
+
     if platform.system() == "Darwin":
         cap = cv2.VideoCapture(video_source)
         device = torch.device("mps") if torch.backends.mps.is_available() else "cpu"
 
     elif platform.system() == "Linux":
-        cap = cv2.VideoCapture(video_source, cv2.CAP_V4L2)
+        cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
         device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
     elif platform.system() == "Windows":
         cap = cv2.VideoCapture(video_source)
         device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
+    # 해상도 설정
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 560)
 
@@ -42,9 +62,7 @@ def main(yolo_data_queue, event, model_path, video_source=0):
 
 
 def one_frame(cap, model, tracker, yolo_data_queue, device):
-    """
-    한 프레임을 처리하는 함수
-    """
+    """한 프레임을 처리하는 함수"""
 
     ret, frame = cap.read()
     if not ret:
@@ -54,44 +72,33 @@ def one_frame(cap, model, tracker, yolo_data_queue, device):
     # YOLOv8로 객체 탐지 수행
     results = model(frame, device=device)
 
-    # 탐지 결과 추출
-    detections = results[0]  # 단일 이미지이므로 첫 번째 결과 사용
+    detections = results[0]
     dets = []
 
     if detections.boxes is not None:
-        for data in detections.boxes.data.tolist():  # Boxes 객체
-            # 바운딩 박스 좌표 및 신뢰도 추출
-            print(data)
-            conf = float(data[4])  # 신뢰도 추출
+        for data in detections.boxes.data.tolist():
+            conf = float(data[4])
             if conf < 0.1:
                 continue
 
             xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
             label = int(data[5])
-
             dets.append([[xmin, ymin, xmax - xmin, ymax - ymin], conf, label])
 
     tracks = tracker.update_tracks(dets, frame=frame)
-
-    # 객체 정보 저장을 위한 딕셔너리
     tracked_objects = {}
 
     for track in tracks:
-
         if not track.is_confirmed():
             continue
 
         track_id = track.track_id
         ltrb = track.to_ltrb()
-
-        xmin, ymin, xmax, ymax = int(ltrb[0]), int(ltrb[1]), int(ltrb[2]), int(ltrb[3])
+        xmin, ymin, xmax, ymax = map(int, ltrb)
         x_center = (xmin + xmax) // 2
         y_center = (ymin + ymax) // 2
-
-        # 딕셔너리에 저장
         tracked_objects[track_id] = {'position': (x_center, y_center)}
 
-    # 객체 정보를 큐에 저장
     print("yolo_tracking: ", tracked_objects)
     yolo_data_queue.put({"vehicles": tracked_objects})
 
