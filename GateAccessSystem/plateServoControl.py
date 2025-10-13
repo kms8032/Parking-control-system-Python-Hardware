@@ -20,7 +20,7 @@ def connect():
 def disconnect():
     print("서버 연결이 종료되었습니다.")
 
-SERVER_URL = "http://0.0.0.0:0"
+SERVER_URL = "http://192.168.0.20:5002"
 try:
     sio.connect(SERVER_URL)
 except Exception as e:
