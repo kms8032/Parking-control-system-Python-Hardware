@@ -8,32 +8,11 @@ import shortest_route as sr
 import send_to_server as server
 import uart
 import platform
+import check_position
 
-if platform.system() == "Darwin":
+if platform.system() == "Linux":
     # 서버 주소 및 포트
-    FLASK_URI = "ws://127.0.0.1:5002"
-    # 주차 구역 좌표 파일 경로
-    PARKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/parking_space.json"
-    # 이동 구역 좌표 파일 경로
-    WALKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/walking_space.json"
-    # YOLO 모델 경로
-    MODEL_PATH = "/Users/kyumin/python-application/carDetection/PCS-model/yolov8_v3/weights/best.pt"
-    # 비디오 소스
-    VIDEO_SOURCE = 0
-elif platform.system() == "Linux":
-    # 서버 주소 및 포트
-    FLASK_URI = "ws://192.168.0.41:5002"
-    # 주차 구역 좌표 파일 경로
-    PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
-    # 이동 구역 좌표 파일 경로
-    WALKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/walking_space.json"
-    # YOLO 모델 경로
-    MODEL_PATH = "/workspace/best.pt"
-    # 비디오 소스
-    VIDEO_SOURCE = 0
-elif platform.system() == "Windows":
-    # 서버 주소 및 포트
-    FLASK_URI = "http://127.0.0.1:5002"
+    FLASK_URI = "ws://192.168.0.10:5002"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
@@ -57,12 +36,13 @@ thread1 = threading.Thread(target=yolo_deep_sort.main, kwargs={"yolo_data_queue"
 thread2 = threading.Thread(target=sr.main, kwargs={"yolo_data_queue": yolo_data_queue, "car_number_data_queue": car_number_data_queue, "route_data_queue": route_data_queue, "event": init_event, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
 thread3 = threading.Thread(target=uart.get_car_number, kwargs={"uri": FLASK_URI, "car_number_data_queue": car_number_data_queue})
 thread4 = threading.Thread(target=server.send_to_server, kwargs={"uri": FLASK_URI, "route_data_queue": route_data_queue, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
-
+thread5 = threading.Thread(target=check_position.detect_objects_with_spaces, args=(VIDEO_SOURCE, MODEL_PATH, PARKING_SPACE_PATH, WALKING_SPACE_PATH, "cuda"), daemon=True)
 # 쓰레드 시작
 thread1.start()
 thread2.start()
 thread3.start()
 thread4.start()
+thread5.start()
 
 try:
     # 메인 프로그램을 무한 대기 상태로 유지
@@ -78,5 +58,6 @@ thread1.join()
 thread2.join()
 thread3.join()
 thread4.join()
+thread5.join()
 
 print("프로그램이 정상적으로 종료되었습니다.")
