@@ -1,7 +1,5 @@
 # 젯슨 나노로부터 웹소켓을 이용하여 차량 번호를 수신
-
 import time
-import queue
 import socketio
 
 sio = socketio.Client(reconnection=True, reconnection_attempts=5, reconnection_delay=2)
