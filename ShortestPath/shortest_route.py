@@ -6,6 +6,9 @@ import time
 import json
 import platform
 import copy
+# OpenCV import for visualization
+import cv2
+import numpy as np
 
 ### 변수 선언 ###
 
@@ -197,11 +200,67 @@ def roop(yolo_data_queue, car_number_data_queue, route_data_queue):
         # 차량 데이터 전송 (cars: 차량 정보, parking: 주차 구역 정보, walking: 이동 중인 차량 id)
         route_data_queue.put(copy.deepcopy({"cars": car_numbers, "parking": parking_space, "walking": walking_positions}))
 
+        # OpenCV GUI 시각화
+        visualize_positions(parking_space, walking_space, car_numbers)
+
         del_target()    # 트래킹이 끊긴 경우를 대비하여 이동 중인 차량이 없으면 모든 혼잡도와 목표 제거
 
         reset_iteration_data()  # 변수 초기화
 
         yolo_data_queue.task_done()  # 처리 완료 신호
+def visualize_positions(parking_space, walking_space, car_numbers):
+    """
+    OpenCV를 이용해 주차 구역, 이동 구역, 차량 위치를 시각적으로 표시하는 함수.
+    """
+    # 캔버스 크기 설정 (좌표 범위에 맞게 조정)
+    canvas_w, canvas_h = 1280, 720
+    img = np.ones((canvas_h, canvas_w, 3), dtype=np.uint8) * 255
+
+    # 각 주차 구역 표시
+    for space_id, space in parking_space.items():
+        pts = np.array(space["position"], np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        color = (200, 200, 200)
+        if space["status"] == "empty":
+            color = (150, 255, 150)
+        elif space["status"] == "occupied":
+            color = (150, 150, 255)
+        elif space["status"] == "target":
+            color = (0, 255, 255)
+        cv2.polylines(img, [pts], isClosed=True, color=color, thickness=2)
+        # 주차 구역 이름 표시
+        label = str(space.get("name", space_id))
+        center = tuple(np.mean(space["position"], axis=0).astype(int))
+        cv2.putText(img, label, center, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+    # 각 이동 구역 표시
+    for space_id, space in walking_space.items():
+        pts = np.array(space["position"], np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        color = (220, 220, 220)
+        cv2.polylines(img, [pts], isClosed=True, color=color, thickness=1)
+        # 이동 구역 이름 표시
+        label = str(space.get("name", space_id))
+        center = tuple(np.mean(space["position"], axis=0).astype(int))
+        cv2.putText(img, label, center, cv2.FONT_HERSHEY_PLAIN, 0.6, (128, 128, 128), 1, cv2.LINE_AA)
+
+    # 차량 위치 표시
+    for car_id, car_info in car_numbers.items():
+        pos = car_info.get("position", None)
+        if pos is not None:
+            x, y = int(pos[0]), int(pos[1])
+            color = (0, 0, 255) if car_info.get("status", "") == "parking" else (0, 255, 0)
+            cv2.circle(img, (x, y), 8, color, -1)
+            label = f'{car_info.get("car_number", car_id)}'
+            cv2.putText(img, label, (x + 10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
+    # 프레임 출력
+    cv2.imshow("Parking System Visualization", img)
+    # 1ms 대기, ESC(27) 누르면 창 닫고 프로그램 종료
+    key = cv2.waitKey(1)
+    if key == 27:
+        cv2.destroyAllWindows()
+        exit(0)
 
 
 def initialize_data(parking_space_path, walking_space_path):
@@ -651,11 +710,8 @@ def reset_iteration_data():
     walking_positions.clear()
     vehicles_to_route.clear()
 
+# 프로그램 종료 시 OpenCV 창 닫기
+import atexit
+atexit.register(cv2.destroyAllWindows)
 
-if __name__ == "__main__":
 
-    start = 0
-    goal = 14
-
-    path = a_star(congestion, start, goal)
-    print(path)
