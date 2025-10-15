@@ -100,26 +100,9 @@ def detect_objects_with_spaces(video_source, model_path, parking_file, walking_f
     from deep_sort_realtime.deepsort_tracker import DeepSort
     from ultralytics import YOLO
 
-    # Jetson Orin + USB 카메라용 GStreamer 파이프라인 함수
-    def gstreamer_pipeline(
-        device="/dev/video0",
-        capture_width=1280,
-        capture_height=720,
-        display_width=1280,
-        display_height=720,
-        framerate=30
-    ):
-        return (
-            f"v4l2src device={device} ! "
-            f"video/x-raw, width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
-            f"videoconvert ! "
-            f"videoscale ! "
-            f"video/x-raw, width={display_width}, height={display_height}, format=BGR ! appsink"
-        )
-
     # 카메라 초기화 (Jetson Orin 전용 GStreamer 파이프라인)
     if platform.system() == "Linux":
-        cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+        cap = cv2.VideoCapture(video_source, cv2.CAP_V4L2)
         if not cap.isOpened():
             print("Failed to open camera with GStreamer pipeline.")
             print(" Check device index using: ls /dev/video*")
@@ -201,6 +184,6 @@ def detect_objects_with_spaces(video_source, model_path, parking_file, walking_f
             print("Exiting tracking window.")
             break
 
-    # ✅ 리소스 해제
+    # 리소스 해제
     cap.release()
     cv2.destroyAllWindows()
