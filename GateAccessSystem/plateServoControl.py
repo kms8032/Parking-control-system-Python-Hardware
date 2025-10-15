@@ -6,7 +6,7 @@ from ultralytics import YOLO
 import easyocr
 import torch
 import time
-import Jetson.GPIO as GPIO
+#import Jetson.GPIO as GPIO
 import threading
 import socketio
 
@@ -20,7 +20,7 @@ def connect():
 def disconnect():
     print("서버 연결이 종료되었습니다.")
 
-SERVER_URL = "http://192.168.0.20:5002"
+SERVER_URL = "http://0.0.0.0:5003"
 try:
     sio.connect(SERVER_URL)
 except Exception as e:

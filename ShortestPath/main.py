@@ -6,7 +6,7 @@ import queue
 import yolo_tracking_deep_sort as yolo_deep_sort
 import shortest_route as sr
 import send_to_server as server
-import uart
+import ShortestPath.recieve_num as recieve_num
 import platform
 import check_position
 
@@ -34,9 +34,10 @@ route_data_queue = queue.Queue()
 # 쓰레드 생성
 thread1 = threading.Thread(target=yolo_deep_sort.main, kwargs={"yolo_data_queue": yolo_data_queue, "event": init_event, "model_path": MODEL_PATH, "video_source": VIDEO_SOURCE})
 thread2 = threading.Thread(target=sr.main, kwargs={"yolo_data_queue": yolo_data_queue, "car_number_data_queue": car_number_data_queue, "route_data_queue": route_data_queue, "event": init_event, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
-thread3 = threading.Thread(target=uart.get_car_number, kwargs={"uri": FLASK_URI, "car_number_data_queue": car_number_data_queue})
+thread3 = threading.Thread(target=recieve_num.run_server, kwargs={"car_number_data_queue": car_number_data_queue}, daemon=True)
 thread4 = threading.Thread(target=server.send_to_server, kwargs={"uri": FLASK_URI, "route_data_queue": route_data_queue, "parking_space_path": PARKING_SPACE_PATH, "walking_space_path": WALKING_SPACE_PATH})
 thread5 = threading.Thread(target=check_position.detect_objects_with_spaces, args=(VIDEO_SOURCE, MODEL_PATH, PARKING_SPACE_PATH, WALKING_SPACE_PATH, "cuda"), daemon=True)
+
 # 쓰레드 시작
 thread1.start()
 thread2.start()
