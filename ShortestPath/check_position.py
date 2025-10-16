@@ -94,11 +94,6 @@ def is_point_in_rectangle(point, rectangle):
 # Function to detect objects and track using DeepSORT and YOLO
 # Function to detect objects and track using DeepSORT and YOLO
 def detect_objects_with_spaces(video_source, model_path, parking_file, walking_file, device):
-    import platform
-    import cv2
-    import numpy as np
-    from deep_sort_realtime.deepsort_tracker import DeepSort
-    from ultralytics import YOLO
 
     # 카메라 초기화 (Jetson Orin 전용 GStreamer 파이프라인)
     if platform.system() == "Linux":

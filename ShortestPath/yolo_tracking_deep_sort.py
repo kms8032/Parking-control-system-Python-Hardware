@@ -8,7 +8,7 @@ import platform
 import torch
 
 
-def main(yolo_data_queue, event, model_path, video_source=0):
+def main(yolo_data_queue, event, model_path, video_source=0, frame_queue=None):
     model = YOLO(model_path)
 
     device = None
@@ -34,16 +34,16 @@ def main(yolo_data_queue, event, model_path, video_source=0):
 
     # 사전에 주차 되어 있는 차량 데이터 전송
     for _ in range(11):
-        one_frame(cap, model, tracker, yolo_data_queue, device)
+        one_frame(cap, model, tracker, yolo_data_queue, device, frame_queue)
 
     # 사전 주차 되어 있는 차량의 번호판 입력 기다림
     event.wait()
 
     while True:
-        one_frame(cap, model, tracker, yolo_data_queue, device)
+        one_frame(cap, model, tracker, yolo_data_queue, device, frame_queue)
 
 
-def one_frame(cap, model, tracker, yolo_data_queue, device):
+def one_frame(cap, model, tracker, yolo_data_queue, device, frame_queue=None):
     """한 프레임을 처리하는 함수"""
 
     ret, frame = cap.read()
@@ -81,8 +81,15 @@ def one_frame(cap, model, tracker, yolo_data_queue, device):
         y_center = (ymin + ymax) // 2
         tracked_objects[track_id] = {'position': (x_center, y_center)}
 
+        # Draw bounding box and track id on frame for visualization
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        cv2.putText(frame, f'ID: {track_id}', (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
     print("yolo_tracking: ", tracked_objects)
     yolo_data_queue.put({"vehicles": tracked_objects})
+
+    if frame_queue is not None:
+        frame_queue.put(frame.copy())
 
 
 if __name__ == '__main__':
