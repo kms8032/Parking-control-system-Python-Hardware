@@ -75,7 +75,7 @@ ser = None  # 젯슨 나노에 연결된 시리얼 포트 (출차 신호 전달�
 ### 함수 선언 ###
 
 # 쓰레드에서 실행 되는 메인 함수
-def main(yolo_data_queue, car_number_data_queue, route_data_queue, event, parking_space_path, walking_space_path, serial_port):
+def main(yolo_data_queue, car_number_data_queue, route_data_queue, event, parking_space_path, walking_space_path, serial_port, id_match_car_number_queue):
     """
     쓰레드에서 호출 되어 실행되는 메인 함수로 각각의 함수를 순서대로 실행
 
@@ -103,7 +103,7 @@ def main(yolo_data_queue, car_number_data_queue, route_data_queue, event, parkin
     event.set()
 
     # 루프 실행
-    roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port)
+    roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port, id_match_car_number_queue)
 
 
 # 최초 주차된 차량 아이디 부여
@@ -134,7 +134,7 @@ def init(yolo_data_queue):
         set_car_numbers[car_number] = value["position"]
 
 
-def roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port):
+def roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port, id_match_car_number_queue):
     """차량 추적 데이터와 차량 번호 데이터를 받아와 계산하는 함수
 
     Args:
@@ -157,6 +157,8 @@ def roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port):
         vehicles = yolo_data_queue.get()["vehicles"]
 
         print("최단 경로 수신 데이터", vehicles)
+
+        id_match_car_number_queue.put(car_numbers)
 
         # 감지된 차량들의 위치 확인
         for vehicle_id, value in vehicles.items():
@@ -385,54 +387,55 @@ def set_parking_space():
 def set_walking_space(arg_vehicles):
     """이동 공간 및 이동하는 차량 설정"""
 
-    for space_id, car_id in walking_positions.items():
-        # 주차 한 후 최초 이동 시
-        if car_numbers[car_id]["status"] == "parking":
+    for space_id, car_ids in walking_positions.items():
+        for car_id in car_ids:
+            # 주차 한 후 최초 이동 시
+            if car_numbers[car_id]["status"] == "parking":
 
-            # 차량 설정
-            if time.time() - parking_space[car_numbers[car_id]["parking"]]["parking_time"] > 5:
-                car_numbers[car_id]["status"] = "exit"
-                car_numbers[car_id]["parking"] = -1
-                car_numbers[car_id]["route"] = []
-                car_numbers[car_id]["last_visited_space"] = None
+                # 차량 설정
+                if time.time() - parking_space[car_numbers[car_id]["parking"]]["parking_time"] > 5:
+                    car_numbers[car_id]["status"] = "exit"
+                    car_numbers[car_id]["parking"] = -1
+                    car_numbers[car_id]["route"] = []
+                    car_numbers[car_id]["last_visited_space"] = None
 
-            else:
-                car_numbers[car_id]["status"] = "entry"
-                car_numbers[car_id]["route"] = []
-                car_numbers[car_id]["last_visited_space"] = None
+                else:
+                    car_numbers[car_id]["status"] = "entry"
+                    car_numbers[car_id]["route"] = []
+                    car_numbers[car_id]["last_visited_space"] = None
 
-            # 주차 구역 비우기
-            set_parking_space_car_id(car_numbers[car_id]["parking"], car_id, "empty")
+                # 주차 구역 비우기
+                set_parking_space_car_id(car_numbers[car_id]["parking"], car_id, "empty")
 
-        # 경로에서 벗어난 경우
-        if space_id not in car_numbers[car_id]["route"] and car_numbers[car_id]["route"]:
-            decrease_congestion(car_numbers[car_id]["route"])    # 이전 경로 혼잡도 감소
-            if car_numbers[car_id]["route"]:
-                car_numbers[car_id]["last_visited_space"] = car_numbers[car_id]["route"][0]    # 직전 방문 구역 설정
-            car_numbers[car_id]["route"] = []    # 경로 초기화
+            # 경로에서 벗어난 경우
+            if space_id not in car_numbers[car_id]["route"] and car_numbers[car_id]["route"]:
+                decrease_congestion(car_numbers[car_id]["route"])    # 이전 경로 혼잡도 감소
+                if car_numbers[car_id]["route"]:
+                    car_numbers[car_id]["last_visited_space"] = car_numbers[car_id]["route"][0]    # 직전 방문 구역 설정
+                car_numbers[car_id]["route"] = []    # 경로 초기화
 
-            # 주차하는 차량의 경우 가까운 주차 구역으로 변경
-            if car_numbers[car_id]["parking"] != -1:
-                set_parking_space_car_id(car_numbers[car_id]["parking"], car_id, "empty")  # 이전 주차 구역 비우기
-                car_numbers[car_id]["parking"] = set_target(car_id)  # 주차 구역 재설정
+                # 주차하는 차량의 경우 가까운 주차 구역으로 변경
+                if car_numbers[car_id]["parking"] != -1:
+                    set_parking_space_car_id(car_numbers[car_id]["parking"], car_id, "empty")  # 이전 주차 구역 비우기
+                    car_numbers[car_id]["parking"] = set_target(car_id)  # 주차 구역 재설정
 
-        elif space_id in car_numbers[car_id]["route"]:
-            temp_index = car_numbers[car_id]["route"].index(space_id)
+            elif space_id in car_numbers[car_id]["route"]:
+                temp_index = car_numbers[car_id]["route"].index(space_id)
 
-            # 경로의 첫번째 위치면 스킵
-            if temp_index == 0:
-                continue
+                # 경로의 첫번째 위치면 스킵
+                if temp_index == 0:
+                    continue
 
-            decrease_congestion_target_in_route(car_numbers[car_id]["route"], space_id)
-            car_numbers[car_id]["last_visited_space"] = car_numbers[car_id]["route"][temp_index - 1]    # 이전 방문 구역 설정
-            car_numbers[car_id]["route"] = car_numbers[car_id]["route"][temp_index:]    # 경로 수정
+                decrease_congestion_target_in_route(car_numbers[car_id]["route"], space_id)
+                car_numbers[car_id]["last_visited_space"] = car_numbers[car_id]["route"][temp_index - 1]    # 이전 방문 구역 설정
+                car_numbers[car_id]["route"] = car_numbers[car_id]["route"][temp_index:]    # 경로 수정
 
-        # 경로가 없는 경우 경로를 계산할 딕셔너리에 추가
-        if not car_numbers[car_id]["route"]:
-            vehicles_to_route[space_id] = car_id
+            # 경로가 없는 경우 경로를 계산할 딕셔너리에 추가
+            if not car_numbers[car_id]["route"]:
+                vehicles_to_route[space_id] = car_id
 
-        # 이동 중인 차량 위치 기록
-        car_numbers[car_id]["position"] = arg_vehicles[car_id]["position"]
+            # 이동 중인 차량 위치 기록
+            car_numbers[car_id]["position"] = arg_vehicles[car_id]["position"]
 
 
 def cal_route(space_id, car_id):
