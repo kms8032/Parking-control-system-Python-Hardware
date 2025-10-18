@@ -2,18 +2,21 @@
 
 import threading
 import time
-import queue
+from queue import Queue, Empty
 import cv2
 import yolo_tracking_deep_sort as yolo_deep_sort
-import shortest_route as sr
+# import shortest_route as sr
 import send_to_server as server
 import uart
 import platform
 import json
 import numpy as np
+import socket_server
+from shortest_route import Car, CarStatus
+import shortest_route as sr
 
 # 프레임에 주차 구역 및 이동 구역을 표시하는 함수
-def draw_spaces(image, parking_data, walking_data):
+def draw_spaces(image, parking_data, moving_data):
     # 주차 구역 흰색으로 표시
     for space in parking_data.values():
         points = np.array(space["position"], np.int32)
@@ -22,7 +25,7 @@ def draw_spaces(image, parking_data, walking_data):
         cv2.putText(image, space["name"], (centroid[0], centroid[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.6, WHITE, 2)
 
     # 이동 구역 파랑색으로 표시
-    for space in walking_data.values():
+    for space in moving_data.values():
         points = np.array(space["position"], np.int32)
         cv2.polylines(image, [points], isClosed=True, color=BLUE, thickness=2)
         centroid = points.mean(axis=0).astype(int)
@@ -48,16 +51,11 @@ if platform.system() == "Darwin":
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
-    WALKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/walking_space.json"
+    MOVING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
     MODEL_PATH = "/Users/kyumin/python-application/carDetection/PCS-model/yolov8_v3/weights/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttys035"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttys037"
-    SERIAL_PORT3 = "/dev/ttys037"
 
 elif platform.system() == "Windows":
     # 서버 주소 및 포트
@@ -65,16 +63,11 @@ elif platform.system() == "Windows":
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
-    WALKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/walking_space.json"
+    MOVING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
     MODEL_PATH = "/workspace/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 송수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttyTHS0"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttyACM0"
-    SERIAL_PORT3 = "/dev/ttyACM1"
 
 else:   # Linux
     # 서버 주소 및 포트
@@ -82,27 +75,22 @@ else:   # Linux
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
-    WALKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/walking_space.json"
+    MOVING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
     MODEL_PATH = "/workspace/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
-    # 젯슨나노 송수신 시리얼 포트
-    SERIAL_PORT = "/dev/ttyTHS0"
-    # 아두이노 송신 시리얼 포트
-    SERIAL_PORT2 = "/dev/ttyACM0"
-    SERIAL_PORT3 = "/dev/ttyACM1"
 
 # 프로그램 종료 플래그
 stop_event = threading.Event()
 init_event = threading.Event()
 
 # 공유할 데이터 큐
-yolo_data_queue = queue.Queue()
-car_number_data_queue = queue.Queue()
-route_data_queue = queue.Queue()
-frame_queue = queue.Queue(maxsize=2)    # gui에 표시할 이미지
-id_match_car_number_queue = queue.Queue(maxsize=2)
+yolo_data_queue = Queue()
+car_number_data_queue = Queue()
+route_data_queue = Queue()
+frame_queue = Queue(maxsize=2)    # gui에 표시할 이미지
+id_match_car_number_queue: Queue[dict[int, Car]] = Queue(maxsize=2)
 
 # 쓰레드 생성
 thread1 = threading.Thread(
@@ -124,17 +112,15 @@ thread2 = threading.Thread(
         "route_data_queue": route_data_queue, 
         "event": init_event, 
         "parking_space_path": PARKING_SPACE_PATH, 
-        "walking_space_path": WALKING_SPACE_PATH, 
-        "serial_port": SERIAL_PORT, 
+        "moving_space_path": MOVING_SPACE_PATH, 
         "id_match_car_number_queue": id_match_car_number_queue
     }
 )
 
 thread3 = threading.Thread(
-    target=uart.get_car_number, 
+    target=socket_server.get_car_number,
     kwargs={
-        "car_number_data_queue": car_number_data_queue, 
-        "serial_port": SERIAL_PORT
+        "car_number_data_queue": car_number_data_queue,
     }
 )
 
@@ -144,9 +130,7 @@ thread4 = threading.Thread(
         "uri": URI, 
         "route_data_queue": route_data_queue, 
         "parking_space_path": PARKING_SPACE_PATH, 
-        "walking_space_path": WALKING_SPACE_PATH, 
-        "serial_port": SERIAL_PORT2, 
-        "serial_port2": SERIAL_PORT3
+        "moving_space_path": MOVING_SPACE_PATH,
     }
 )
 
@@ -157,7 +141,7 @@ thread3.start()
 thread4.start()
 
 parking_data = load_json(PARKING_SPACE_PATH)
-walking_data = load_json(WALKING_SPACE_PATH)
+moving_data = load_json(MOVING_SPACE_PATH)
 
 try:
     # 메인 루프에서 프레임을 받아 GUI 표시
@@ -173,21 +157,33 @@ try:
             car_numbers = id_match_car_number_queue.get(timeout=0.1)
 
             # 구역 작성
-            frame_with_space = draw_spaces(frame, parking_data, walking_data)
+            frame_with_space = draw_spaces(frame, parking_data, moving_data)
 
             # 탐지한 객체 루프
             for track in tracks:
                 if not track.is_confirmed():
                     continue
-                track_id = track.track_id
+                track_id = int(track.track_id)
                 if track_id in car_numbers:
                     ltrb = track.to_ltrb()
                     xmin, ymin, xmax, ymax = int(ltrb[0]), int(ltrb[1]), int(ltrb[2]), int(ltrb[3])
 
-                    # 탐지한 객체에 초록색 사각형 및 글자 표시
-                    cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), GREEN, 2)
-                    cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), GREEN, -1)
-                    cv2.putText(frame_with_space, str(car_numbers[track_id]['car_number']), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+                    # 주차를 위해 움직이는 차량은 초록색 사각형 및 번호 표시
+                    if car_numbers[track_id].status == CarStatus.ENTRY:
+                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), GREEN, 2)
+                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), GREEN, -1)
+                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+                    
+                    # 주차한 차량은 빨강색 사각형 및 번호 표시
+                    elif car_numbers[track_id].status == CarStatus.PARKING:
+                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), RED, 2)
+                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), RED, -1)
+                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+
+                    else:
+                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), YELLOW, 2)
+                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), YELLOW, -1)
+                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
 
             # 메인 스레드에서 안전하게 GUI 표시
             cv2.imshow("YOLO Tracking", frame_with_space)
@@ -199,7 +195,7 @@ try:
                 stop_event.set()
                 break
 
-        except queue.Empty:
+        except Empty:
             # 프레임이 없으면 계속 대기
             continue
 

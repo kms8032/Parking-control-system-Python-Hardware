@@ -1,513 +1,266 @@
 {
-    "0": {
-        "name": "A1",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                294,
-                110
-            ],
-            [
-                411,
-                113
-            ],
-            [
-                403,
-                166
-            ],
-            [
-                301,
-                157
-            ]
-        ]
-    },
-    "1": {
-        "name": "A2",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                431,
-                110
-            ],
-            [
-                568,
-                107
-            ],
-            [
-                564,
-                149
-            ],
-            [
-                450,
-                141
-            ]
-        ]
-    },
-    "2": {
-        "name": "A3",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                611,
-                97
-            ],
-            [
-                692,
-                99
-            ],
-            [
-                697,
-                151
-            ],
-            [
-                604,
-                156
-            ]
-        ]
-    },
-    "3": {
-        "name": "A4",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                201,
-                355
-            ],
-            [
-                336,
-                358
-            ],
-            [
-                325,
-                445
-            ],
-            [
-                177,
-                435
-            ]
-        ]
-    },
-    "4": {
-        "name": "A5",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                333,
-                482
-            ],
-            [
-                545,
-                493
-            ],
-            [
-                527,
-                587
-            ],
-            [
-                314,
-                587
-            ]
-        ]
-    },
-    "5": {
-        "name": "A6",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                3,
-                661
-            ],
-            [
-                214,
-                682
-            ],
-            [
-                181,
-                780
-            ],
-            [
-                4,
-                764
-            ]
-        ]
-    },
-    "6": {
-        "name": "B1",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                456,
-                253
-            ],
-            [
-                585,
-                259
-            ],
-            [
-                545,
-                299
-            ],
-            [
-                476,
-                281
-            ]
-        ]
-    },
-    "7": {
-        "name": "B2",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                614,
-                252
-            ],
-            [
-                693,
-                257
-            ],
-            [
-                660,
-                310
-            ],
-            [
-                619,
-                298
-            ]
-        ]
-    },
-    "8": {
-        "name": "B3",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                752,
-                247
-            ],
-            [
-                828,
-                249
-            ],
-            [
-                817,
-                283
-            ],
-            [
-                763,
-                289
-            ]
-        ]
-    },
-    "9": {
-        "name": "B4",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                833,
-                233
-            ],
-            [
-                892,
-                235
-            ],
-            [
-                891,
-                274
-            ],
-            [
-                855,
-                280
-            ]
-        ]
-    },
-    "10": {
-        "name": "C1",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                920,
-                240
-            ],
-            [
-                973,
-                237
-            ],
-            [
-                971,
-                277
-            ],
-            [
-                919,
-                276
-            ]
-        ]
-    },
-    "11": {
-        "name": "C2",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                930,
-                204
-            ],
-            [
-                994,
-                203
-            ],
-            [
-                993,
-                217
-            ],
-            [
-                941,
-                220
-            ]
-        ]
-    },
-    "12": {
-        "name": "C3",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                834,
-                185
-            ],
-            [
-                868,
-                185
-            ],
-            [
-                864,
-                222
-            ],
-            [
-                815,
-                222
-            ]
-        ]
-    },
-    "13": {
-        "name": "C4",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                713,
-                195
-            ],
-            [
-                750,
-                197
-            ],
-            [
-                743,
-                220
-            ],
-            [
-                711,
-                222
-            ]
-        ]
-    },
-    "14": {
-        "name": "D1",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                623,
-                197
-            ],
-            [
-                663,
-                197
-            ],
-            [
-                667,
-                218
-            ],
-            [
-                629,
-                219
-            ]
-        ]
-    },
-    "15": {
-        "name": "D2",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                561,
-                198
-            ],
-            [
-                579,
-                198
-            ],
-            [
-                583,
-                212
-            ],
-            [
-                552,
-                220
-            ]
-        ]
-    },
-    "16": {
-        "name": "D3",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                516,
-                192
-            ],
-            [
-                537,
-                196
-            ],
-            [
-                530,
-                222
-            ],
-            [
-                496,
-                222
-            ]
-        ]
-    },
-    "17": {
-        "name": "D4",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                465,
-                196
-            ],
-            [
-                485,
-                201
-            ],
-            [
-                479,
-                216
-            ],
-            [
-                444,
-                221
-            ]
-        ]
-    },
-    "18": {
-        "name": "D5",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                417,
-                199
-            ],
-            [
-                436,
-                201
-            ],
-            [
-                429,
-                221
-            ],
-            [
-                405,
-                222
-            ]
-        ]
-    },
-    "19": {
-        "name": "D6",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                372,
-                188
-            ],
-            [
-                392,
-                200
-            ],
-            [
-                382,
-                220
-            ],
-            [
-                357,
-                226
-            ]
-        ]
-    },
-    "20": {
-        "name": "D7",
-        "status": "empty",
-        "car_number": null,
-        "position": [
-            [
-                332,
-                193
-            ],
-            [
-                326,
-                203
-            ],
-            [
-                324,
-                233
-            ],
-            [
-                290,
-                233
-            ]
-        ]
-    },
-    "21": {
-        "name": "D8",
-        "status": "empty",
-        "car_number": null,
-        "parking_time": null,
-        "position": [
-            [
-                282,
-                204
-            ],
-            [
-                283,
-                204
-            ],
-            [
-                277,
-                236
-            ],
-            [
-                261,
-                237
-            ],
-            [
-                256,
-                228
-            ]
-        ]
-    }
+  "0": {
+    "name": "A1",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [855, 725],
+      [963, 725],
+      [977, 886],
+      [853, 886]
+    ],
+    "near_moving_space_id": 2
+  },
+  "1": {
+    "name": "A2",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [752, 723],
+      [862, 724],
+      [863, 886],
+      [739, 876]
+    ],
+    "near_moving_space_id": 3
+  },
+  "2": {
+    "name": "A3",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [646, 724],
+      [759, 721],
+      [754, 876],
+      [632, 877]
+    ],
+    "near_moving_space_id": 3
+  },
+  "3": {
+    "name": "A4",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [547, 724],
+      [657, 725],
+      [640, 882],
+      [521, 879]
+    ],
+    "near_moving_space_id": 3
+  },
+  "4": {
+    "name": "A5",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [435, 726],
+      [553, 724],
+      [535, 877],
+      [405, 882]
+    ],
+    "near_moving_space_id": 4
+  },
+  "5": {
+    "name": "A6",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [335, 730],
+      [444, 724],
+      [416, 880],
+      [298, 881]
+    ],
+    "near_moving_space_id": 4
+  },
+  "6": {
+    "name": "B1",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [692, 448],
+      [814, 447],
+      [815, 532],
+      [686, 533]
+    ],
+    "near_moving_space_id": 5
+  },
+  "7": {
+    "name": "B2",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [568, 448],
+      [702, 444],
+      [696, 533],
+      [558, 533]
+    ],
+    "near_moving_space_id": 5
+  },
+  "8": {
+    "name": "B3",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [700, 373],
+      [815, 371],
+      [816, 456],
+      [688, 454]
+    ],
+    "near_moving_space_id": 6
+  },
+  "9": {
+    "name": "B4",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [579, 378],
+      [704, 376],
+      [699, 453],
+      [564, 458]
+    ],
+    "near_moving_space_id": 6
+  },
+  "10": {
+    "name": "C1",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [709, 164],
+      [824, 166],
+      [820, 237],
+      [700, 236]
+    ],
+    "near_moving_space_id": 10
+  },
+  "11": {
+    "name": "C2",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [601, 170],
+      [706, 168],
+      [708, 230],
+      [591, 229]
+    ],
+    "near_moving_space_id": 10
+  },
+  "12": {
+    "name": "C3",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [711, 108],
+      [826, 106],
+      [823, 177],
+      [706, 169]
+    ],
+    "near_moving_space_id": 11
+  },
+  "13": {
+    "name": "C4",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [607, 106],
+      [711, 108],
+      [715, 167],
+      [601, 172]
+    ],
+    "near_moving_space_id": 11
+  },
+  "14": {
+    "name": "D1",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [254, 523],
+      [388, 519],
+      [369, 608],
+      [231, 617]
+    ],
+    "near_moving_space_id": 4
+  },
+  "15": {
+    "name": "D2",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [278, 444],
+      [405, 440],
+      [386, 532],
+      [247, 530]
+    ],
+    "near_moving_space_id": 6
+  },
+  "16": {
+    "name": "D3",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [296, 364],
+      [421, 366],
+      [405, 448],
+      [277, 448]
+    ],
+    "near_moving_space_id": 6
+  },
+  "17": {
+    "name": "D4",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [317, 298],
+      [436, 296],
+      [421, 376],
+      [294, 374]
+    ],
+    "near_moving_space_id": 9
+  },
+  "18": {
+    "name": "D5",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [338, 236],
+      [451, 233],
+      [437, 305],
+      [314, 304]
+    ],
+    "near_moving_space_id": 9
+  },
+  "19": {
+    "name": "D6",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [353, 170],
+      [461, 169],
+      [451, 239],
+      [331, 242]
+    ],
+    "near_moving_space_id": 11
+  },
+  "20": {
+    "name": "D7",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [369, 117],
+      [474, 119],
+      [460, 177],
+      [352, 176]
+    ],
+    "near_moving_space_id": 11
+  },
+  "21": {
+    "name": "D8",
+    "status": "empty",
+    "car_id": null,
+    "position": [
+      [381, 52],
+      [489, 50],
+      [469, 122],
+      [366, 122]
+    ],
+    "near_moving_space_id": 14
+  }
 }
