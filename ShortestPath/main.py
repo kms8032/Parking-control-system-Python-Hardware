@@ -33,6 +33,27 @@ def draw_spaces(image, parking_data, moving_data):
 
     return image
 
+def draw_car(frame, ltrb, car: Car):
+
+    xmin, ymin, xmax, ymax = int(ltrb[0]), int(ltrb[1]), int(ltrb[2]), int(ltrb[3])
+ 
+    # 주차를 위해 움직이는 차량은 초록색 사각형 및 번호 표시
+    if car.status == CarStatus.ENTRY:
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
+        cv2.rectangle(frame, (xmin, ymin - 35), (xmin + 75, ymin), GREEN, -1)
+        cv2.putText(frame, str(car.car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+    
+    # 주차한 차량은 빨강색 사각형 및 번호 표시
+    elif car.status == CarStatus.PARKING:
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), RED, 2)
+        cv2.rectangle(frame, (xmin, ymin - 35), (xmin + 75, ymin), RED, -1)
+        cv2.putText(frame, str(car.car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+
+    # 출차를 위해 움직이는 차량은 노랑색 사각형 및 번호 표시
+    else:
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), YELLOW, 2)
+        cv2.rectangle(frame, (xmin, ymin - 35), (xmin + 75, ymin), YELLOW, -1)
+        cv2.putText(frame, str(car.car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
 
 def load_json(filename):
     with open(filename, 'r') as file:
@@ -53,7 +74,7 @@ if platform.system() == "Darwin":
     # 이동 구역 좌표 파일 경로
     MOVING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/Users/kyumin/python-application/carDetection/PCS-model/yolov8_v3/weights/best.pt"
+    MODEL_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/model/v2_best_small.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
 
@@ -128,9 +149,7 @@ thread4 = threading.Thread(
     target=server.send_to_server, 
     kwargs={
         "uri": URI, 
-        "route_data_queue": route_data_queue, 
-        "parking_space_path": PARKING_SPACE_PATH, 
-        "moving_space_path": MOVING_SPACE_PATH,
+        "route_data_queue": route_data_queue,
     }
 )
 
@@ -165,25 +184,7 @@ try:
                     continue
                 track_id = int(track.track_id)
                 if track_id in car_numbers:
-                    ltrb = track.to_ltrb()
-                    xmin, ymin, xmax, ymax = int(ltrb[0]), int(ltrb[1]), int(ltrb[2]), int(ltrb[3])
-
-                    # 주차를 위해 움직이는 차량은 초록색 사각형 및 번호 표시
-                    if car_numbers[track_id].status == CarStatus.ENTRY:
-                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), GREEN, 2)
-                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), GREEN, -1)
-                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
-                    
-                    # 주차한 차량은 빨강색 사각형 및 번호 표시
-                    elif car_numbers[track_id].status == CarStatus.PARKING:
-                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), RED, 2)
-                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), RED, -1)
-                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
-
-                    else:
-                        cv2.rectangle(frame_with_space, (xmin, ymin), (xmax, ymax), YELLOW, 2)
-                        cv2.rectangle(frame_with_space, (xmin, ymin - 35), (xmin + 75, ymin), YELLOW, -1)
-                        cv2.putText(frame_with_space, str(car_numbers[track_id].car_number), (xmin + 5, ymin - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
+                    draw_car(frame_with_space, track.to_ltrb(), car_numbers[track_id])
 
             # 메인 스레드에서 안전하게 GUI 표시
             cv2.imshow("YOLO Tracking", frame_with_space)

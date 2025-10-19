@@ -6,6 +6,7 @@ import math
 import time
 import json
 import copy
+from types import MappingProxyType
 from typing import Optional, Tuple, List, Dict, Mapping, overload
 from queue import Queue
 from enum import Enum
@@ -68,7 +69,6 @@ class Car:
         entry_time: float,
         position: Tuple[float, float],
         target_parking_space_id: Optional[int] = None,
-        route: Optional[List[int]] = None,
         space_id: Optional[int] = None
     ) -> None:
         """
@@ -91,8 +91,8 @@ class Car:
         self.parking_time: float = 0
         self.position: Tuple[float, float] = position
         self.target_parking_space_id: Optional[int] = target_parking_space_id
-        self.route: List[int] = route if route is not None else []
         self.space_id: Optional[int] = space_id
+        self.route: List[int] = []
     
     @classmethod
     def create_entry_car(cls, car_id: int, car_number: str, position: Tuple[float, float]):
@@ -107,7 +107,6 @@ class Car:
             entry_time=time.time(),
             position=position,
             target_parking_space_id=None,
-            route=None,
             space_id=None
             )
     
@@ -167,9 +166,14 @@ class Car:
         
         # 루트에 있던 구역으로 간 경우
         if moving_space.space_id in self.route:
-
             moving_space.append_car(self.car_id)
             self.set_moving(moving_space)
+        
+        # 루트에 없는 구역으로 간 경우
+        else:
+            moving_space.append_car(self.car_id)
+            self.set_moving(moving_space)
+            self.cal_route()
 
 
     def set_parking(self, parking_space: ParkingSpace):
@@ -227,6 +231,7 @@ class Car:
                 parking_space_instances[target_parking_space_id].set_target(self.car_id)
 
             self.set_route(route)
+            self.target_parking_space_id = target_parking_space_id
 
 
     def set_route(self, route: List[int]) -> None:
@@ -247,18 +252,21 @@ class Car:
                 moving_space_instances[space_id].remove_route(self.car_id)
 
         self.route = []
+        self.target_parking_space_id = None
 
-    # def to_dict(self) -> Dict[str, any]:
-    #     """딕셔너리 형태로 변환 (기존 코드와의 호환성)"""
-    #     return {
-    #         "car_number": self.car_number,
-    #         "status": self.status,
-    #         "parking": self.parking,
-    #         "route": self.route,
-    #         "entry_time": self.entry_time,
-    #         "position": self.position,
-    #         "last_visited_space": self.last_visited_space
-    #     }
+    def to_dict(self) -> Dict[str, any]:
+        """딕셔너리 형태로 변환"""
+        return {
+            "car_id": self.car_id,
+            "car_number": self.car_number,
+            "status": self.status.value,  # Enum을 문자열로 변환
+            "entry_time": self.entry_time,
+            "parking_time": self.parking_time,
+            "position": self.position,
+            "target_parking_space_id": self.target_parking_space_id,
+            "route": self.route,
+            "space_id": self.space_id
+        }
 
 class Space(ABC):
     """구역 클래스"""
@@ -273,6 +281,7 @@ class Space(ABC):
         self.name: str = name
         self.position: List[Tuple[int, int]] = position # [(x1, y1), (x2, y2), (x3, y3), (x4, y4)] 구역의 꼭짓점 (좌상단, 우상단, 우하단, 좌하단 순서)
         self.car_set: set[int] = set()
+        self.center_position: Tuple[float, float] = self.get_center_position()
     
     def is_car_in_space(self, x: float, y: float) -> bool:
         """
@@ -450,18 +459,19 @@ class ParkingSpace(Space):
     def get_near_moving_space_id(self) -> int:
         return self.near_moving_space_id
 
-
-    # def to_dict(self) -> Dict[str, any]:
-    #     """딕셔너리 형태로 변환 (기존 코드와의 호환성)"""
-    #     return {
-    #         "name": self.name,
-    #         "status": self.status,
-    #         "car_id": self.car_id,
-    #         "position": self.position,
-    #         "entry_time": self.entry_time,
-    #         "parking_time": self.parking_time,
-    #         "car_number": self.car_number
-    #     }
+    def to_dict(self) -> Dict[str, any]:
+        """딕셔너리 형태로 변환"""
+        return {
+            "space_id": self.space_id,
+            "name": self.name,
+            "position": self.position,
+            "near_moving_space_id": self.near_moving_space_id,
+            "status": self.status.value,  # Enum을 문자열로 변환
+            "car_id": self.car_id,
+            "car_number": self.car_number,
+            "parking_time": self.parking_time,
+            "car_set": list(self.car_set)  # set을 list로 변환
+        }
 
 class MovingSpace(Space):
     """이동 구역 클래스"""
@@ -529,9 +539,22 @@ class MovingSpace(Space):
 
         if car_id not in self.route_set:
             return
-        
+
         self.route_set.remove(car_id)
         self.congestion -= MovingSpace.ROUTE_CONGESTION
+
+    def to_dict(self) -> Dict[str, any]:
+        """딕셔너리 형태로 변환"""
+        return {
+            "space_id": self.space_id,
+            "name": self.name,
+            "position": self.position,
+            "near_parking_space_id": list(self.near_parking_space_id),  # set을 list로 변환
+            "near_moving_space_id": list(self.near_moving_space_id),  # set을 list로 변환
+            "congestion": self.congestion,
+            "car_set": list(self.car_set),  # set을 list로 변환
+            "route_set": list(self.route_set)  # set을 list로 변환
+        }
 
 
 ### 전역 변수 선언 ###
@@ -548,7 +571,7 @@ car_number_instances: dict[int, Car] = {}
 ### 함수 선언 ###
 
 # 쓰레드에서 실행 되는 메인 함수
-def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, serial_port, id_match_car_number_queue):
+def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, id_match_car_number_queue):
     """
     쓰레드에서 호출 되어 실행되는 메인 함수로 각각의 함수를 순서대로 실행
 
@@ -576,7 +599,7 @@ def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
     event.set()
 
     # 루프 실행
-    roop(yolo_data_queue, car_number_data_queue, route_data_queue, serial_port, id_match_car_number_queue)
+    roop(yolo_data_queue, car_number_data_queue, route_data_queue, id_match_car_number_queue)
 
 
 def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
@@ -634,7 +657,7 @@ def car_exit():
     print("출차하는 차량이 있습니다.")
 
 
-def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, serial_port, id_match_car_number_queue):
+def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue):
     """차량 추적 데이터와 차량 번호 데이터를 받아와 계산하는 함수
 
     Args:
@@ -660,7 +683,7 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                 
                 # 주차 구역에 있는지 확인 하고 처리
                 if (parking_space := check_position(position, parking_space_instances)) is not None:
-                    car.set_parking(parking_space)
+                    car.update_in_parking(parking_space)
                 
                 # 이동 구역에 있는지 확인 하고 처리
                 elif (moving_space := check_position(position, moving_space_instances)) != None:
@@ -670,7 +693,7 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                         car_exit()
                     
                     else:
-                        car.set_moving(moving_space)
+                        car.update_in_moving(moving_space)
                 
                 # 구역 밖 처리
                 else:
@@ -681,8 +704,13 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                 entry(car_id, car_number_data_queue, position)
 
 
-        # 차량 데이터 전송 (cars: 차량 정보, parking: 주차 구역 정보, walking: 이동 중인 차량 id)
-        route_data_queue.put(copy.deepcopy({"cars": car_number_instances, "parking": parking_space_instances, "walking": moving_space_instances}))
+        # 차량 데이터 전송 (cars: 차량 정보, parking: 주차 구역 정보, moving: 이동 구역 정보)
+        # MappingProxyType을 사용하여 read-only view 생성 (메모리 효율적)
+        route_data_queue.put({
+            "cars": MappingProxyType(car_number_instances),
+            "parking": MappingProxyType(parking_space_instances),
+            "moving": MappingProxyType(moving_space_instances),
+        })
 
         yolo_data_queue.task_done()  # 처리 완료 신호
 

@@ -8,6 +8,22 @@ import serial
 import numpy as np
 import cv2
 import platform
+from enum import Enum
+from types import MappingProxyType
+from typing import Mapping, TypeVar, Protocol
+from shortest_route import Car, CarStatus, ParkingSpace, MovingSpace
+
+# to_dict 메서드를 가진 객체를 위한 Protocol
+class ToDictable(Protocol):
+    def to_dict(self) -> dict: ...
+
+T = TypeVar('T', bound=ToDictable)
+
+class Direction(Enum):
+    RIGHT = "right"
+    LEFT = "left"
+    UP = "up"
+    DOWN = "down"
 
 
 # 웹 페이지 각 구역 좌표
@@ -107,171 +123,142 @@ def reflect_point_in_rectangle(point, rectangle_corners):
     return reflected_x, reflected_y
 
 
-# 경로에 따라 아두이노로 전송할 데이터 생성
-def set_arduino_data(route, value):
-    display_area = walking_space[route[1]]
-    next_area = walking_space[route[2]]
-    display_area_id = DISPLAY_SPACE.index(route[1]) + 1
-
-    display_center = calculate_center(display_area["position"])  # display_area의 중심점
-    next_center = calculate_center(next_area["position"])  # next_area의 중심점
-
-    # display_area와 next_area의 중심점 좌표 차이 계산
+def cal_display_direction(display_center: tuple[float, float], next_center: tuple[float, float]) -> Direction:
+    """
+    중심점을 이용해서 다음 구역의 방향을 반환하는 함수
+    """
+    
+    # display 구역과 다음 구역의 중심점 좌표 차이 계산
     delta_x = abs(display_center[0] - next_center[0])
     delta_y = abs(display_center[1] - next_center[1])
 
-    # X 좌표의 차이가 더 큰 경우
     if delta_x > delta_y:
         if display_center[0] < next_center[0]:
-            arduino_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "left"}
-        elif display_center[0] > next_center[0]:
-            arduino_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "right"}
-
-    # Y 좌표의 차이가 더 큰 경우
+            return Direction.LEFT
+        else:
+            return Direction.RIGHT
+    
     else:
         if display_center[1] < next_center[1]:
-            arduino_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "up"}
-        elif display_center[1] > next_center[1]:
-            arduino_data[display_area_id] = {"car_number": value.get("car_number", "No Number"), "direction": "down"}
+            return Direction.UP
+        else:
+            return Direction.DOWN
 
 
 def cal_web_position(space_id, car_id, cars):
-    transformed_x, transformed_y = transform_point_in_quadrilateral_to_rectangle(cars[car_id]["position"],
-                                                                                 walking_space[space_id]["position"],
-                                                                                 web_coordinates[space_id])
+    transformed_x, transformed_y = transform_point_in_quadrilateral_to_rectangle(
+        cars[car_id]["position"],
+         walking_space[space_id]["position"],
+         web_coordinates[space_id]
+    )
 
     reflect_x, reflect_y = reflect_point_in_rectangle((transformed_x, transformed_y), web_coordinates[space_id])
 
     return reflect_x, reflect_y
 
 
+def to_dict_mapping(objects: Mapping[int, T]) -> dict[int, dict]:
+    """
+    to_dict 메서드를 가진 객체들의 Mapping을 딕셔너리로 변환
+
+    Args:
+        objects: Car, ParkingSpace, MovingSpace 등 to_dict() 메서드를 가진 객체들의 Mapping
+
+    Returns:
+        각 객체를 딕셔너리로 변환한 결과
+    """
+    return {obj_id: obj.to_dict() for obj_id, obj in objects.items()}
+
+
 # 소켓 지정
 sio = socketio.Client(reconnection=True, reconnection_attempts=5, reconnection_delay=2)
 
-@sio.event
-def connect():
-    print("Connection established")
+# @sio.event
+# def connect():
+#     print("Connection established")
 
-@sio.event
-def disconnect():
-    print("Disconnected from server")
+# @sio.event
+# def disconnect():
+#     print("Disconnected from server")
 
-def send_to_server(uri, route_data_queue, parking_space_path, walking_space_path, serial_port, serial_port2):
+def send_to_server(uri, route_data_queue):
     # 서버 연결
     global arduino_data
     global previous_arduino_data
     global walking_space
 
     # 서버 연결
-    sio.connect(uri)
-
-    # 시리얼 통신 설정
-    if platform.system() == "Linux":
-        ser = serial.Serial(serial_port, 9600, timeout=1)
-        ser2 = serial.Serial(serial_port2, 9600, timeout=1)
-
-    # walking_space의 키를 숫자형으로 변환
-    with open(walking_space_path,
-              "r") as f:
-        walking_space = json.load(f)
-        walking_space = {int(key): value for key, value in walking_space.items()}  # 문자열 키를 숫자로 변환
+    # sio.connect(uri)
 
     while True:
         try:
             # Queue에서 데이터가 있을 때까지 대기
+            # MappingProxyType으로 받은 read-only 데이터
             data = route_data_queue.get(timeout=1)
-            # Sending path: {'cars': {1: {'car_number': '1234', 'status': 'parking', 'parking': 22, 'route': [], 'parking_time': 1728125835.2989068},
-            #                                   2: {'car_number': '5678', 'status': 'parking', 'parking': 23, 'route': [], 'parking_time': 1728125835.298909}}}
 
-            print(f"send_to_server 에서 받은 데이터 : {data}")
-            cars = data["cars"] # 차량 데이터    {car_id: {car_number, status, parking, route, parking_time}}
-            parking_data = data["parking"]  # 주차 구역 데이터 {space_id: {name, status, car_id, car_number, position, entry_time, exit_time}}
+            # 타입 언패킹
+            cars: Mapping[int, Car] = data["cars"]  # 차량 데이터
+            parking_spaces: Mapping[int, ParkingSpace] = data["parking"]  # 주차 구역 데이터
+            moving_spaces: Mapping[int, MovingSpace] = data["moving"]  # 이동 구역 데이터
 
-            send_data = {"time": time.time()}   # 서버로 전송할 데이터
+            cars_dict = {}
+            display_dict: dict[int, list[tuple[str, str]]] = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }
 
-            moving_data = {}    # 이동 중인 차량 데이터
+            for car_id, car in cars.items():
+                cars_dict[car_id] = car.to_dict()
 
-            for car_id, value in cars.items():
-                print("car_id = ", car_id)
-                print("value = ", value)
-                if value["status"] == "entry":
-                    parking_data[value["parking"]]["entry_time"] = value["entry_time"]
-                    moving_data[car_id] = {"entry_time": value["entry_time"], "car_number": value["car_number"], "status": value["status"]}
-                elif value["status"] == "exit":
-                    moving_data[car_id] = {"entry_time": value["entry_time"], "car_number": value["car_number"],"status": value["status"]}
+                route = car.route
 
-            print("movingData = ", moving_data)
+                if route and len(route) >= 2 and route[1] in DISPLAY_SPACE:
+                    dispaly_center = moving_spaces[route[1]].center_position
 
-            # 이동 중인 차량 좌표 계산
-            walking_cars = data["walking"]  # 이동 중인 차량 데이터 {space_id: car_id}
-            print("walking_cars", walking_cars)
-
-            for space_id, car_ids in walking_cars.items():  # car_ids는 리스트가 됨
-                for car_id in car_ids:
-                    # 차량 목록에 없는 경우 무시
-                    if car_id not in cars:
+                    if len(route) == 2 and car.target_parking_space_id is not None:
+                        next_center = parking_spaces[car.target_parking_space_id].center_position
+                    elif len(route) > 2:
+                        next_center = moving_spaces[route[2]].center_position
+                    else:
                         continue
 
-                    # 웹페이지에 표시할 좌표 계산
-                    x, y = cal_web_position(space_id, car_id, cars)
-                    if car_id not in moving_data:
-                        moving_data[car_id] = {"car_number": cars[car_id]["car_number"],
-                                               "status": cars[car_id]["status"],
-                                               "entry_time": cars[car_id]["entry_time"]}
-                    moving_data[car_id]["position"] = (x, y)
+                    display_number = DISPLAY_SPACE.index(route[1]) + 1
+                    direction = cal_display_direction(dispaly_center, next_center)
 
-            # 전송할 데이터 세팅
-            send_data["parking"] = parking_data
-            send_data["moving"] = moving_data
+                    display_dict[display_number].append((car.car_number, direction.value))
 
-            print(f"Sending path: {send_data}")
+            # 모든 객체를 딕셔너리로 변환 (단일 함수 사용)
+            send_data = {
+                "time": time.time(),
+                "cars": to_dict_mapping(cars),
+                "parking_spaces": to_dict_mapping(parking_spaces),
+                "moving_spaces": to_dict_mapping(moving_spaces),
+                "display": display_dict,
+            }
 
-            # 서버로 데이터 전송
-            sio.emit('message', send_data)
+            print(f"Send data: {send_data}")
 
-            # Arduino로 전송할 데이터 초기화
-            arduino_data.clear()
-            # 차량의 경로에 따라 아두이노로 전송할 데이터 생성
-            processed_display_areas = set()  # 이미 처리된 디스플레이 구역을 추적
-            for car_id, value in data["cars"].items():
-                route = value["route"]
-                if route and len(route) > 2 and route[1] in DISPLAY_SPACE:
-                    display_area_id = DISPLAY_SPACE.index(route[1]) + 1
-                    if display_area_id not in processed_display_areas:
-                        set_arduino_data(route, value)
-                        processed_display_areas.add(display_area_id)
+            # for space_id, car_ids in walking_cars.items():  # car_ids는 리스트가 됨
+            #     for car_id in car_ids:
+            #         # 차량 목록에 없는 경우 무시
+            #         if car_id not in cars:
+            #             continue
 
-            print(f"Arduino data: {arduino_data}")
-            print(f"Previous arduino data: {previous_arduino_data}")
+            #         # 웹페이지에 표시할 좌표 계산
+            #         x, y = cal_web_position(space_id, car_id, cars)
+            #         if car_id not in moving_data:
+            #             moving_data[car_id] = {"car_number": cars[car_id]["car_number"],
+            #                                    "status": cars[car_id]["status"],
+            #                                    "entry_time": cars[car_id]["entry_time"]}
+            #         moving_data[car_id]["position"] = (x, y)
 
-            # 생성한 데이터가 이전 데이터와 다를 경우 아두이노로 데이터 전송
-            if arduino_data != previous_arduino_data:
-                previous_arduino_data = arduino_data
-                if platform.system() == "Linux":
-                    ser.write((str(arduino_data) + "\n").encode())
-                    ser2.write((str(arduino_data) + "\n").encode())
-                print("Data sent!")
+            # # 서버로 데이터 전송
+            # sio.emit('message', send_data)
+
+            # # 전송 데이터를 파일로 기록
+            # with open('send_data.json', 'a', encoding='utf-8') as f:
+            #     json.dump(send_data, f, ensure_ascii=False, indent=2)
+            #     f.write('\n' + '='*50 + '\n')  # 구분선 추가
 
         except queue.Empty:
             # Queue가 비었을 때는 잠시 대기
             print("Queue is empty")
             time.sleep(1)
             continue
-
-
-if __name__ == "__main__":
-
-    serial_port = "/dev/ttyACM0"
-
-    ser = serial.Serial(serial_port, 9600, timeout=1)
-
-    arduino_data = {
-        2: {"car_number": "12가3456", "direction": "right"},
-        4: {"car_number": "34나7890", "direction": "down"},
-        7: {"car_number": "56다1234", "direction": "left"}
-    }
-
-    while True:
-        ser.write((str(arduino_data) + "\n").encode())
-        print("Data sent!")
-        time.sleep(0.2)
