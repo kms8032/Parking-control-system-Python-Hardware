@@ -25,6 +25,8 @@ class Direction(Enum):
     UP = "up"
     DOWN = "down"
 
+# 카메라 회전 각도 설정 (0, 90, 180, 270 중 선택)
+CAMERA_ROTATION_ANGLE = 90  # 현재 90도 회전된 상태
 
 # 웹 페이지 각 구역 좌표
 web_coordinates = {
@@ -66,7 +68,11 @@ def calculate_center(points):
     return (center_x, center_y)
 
 
-def transform_point_in_quadrilateral_to_rectangle(point, quadrilateral, arg_web_coordinate):
+def transform_point_in_quadrilateral_to_rectangle(
+        point: tuple[float, float], 
+        quadrilateral: list[tuple[int, int]], 
+        arg_web_coordinate: list[tuple[int, int]]
+    ):
     """
     사각형 내부의 특정 점을 웹 좌표 내 직사각형의 대응 위치로 변환
 
@@ -100,13 +106,14 @@ def transform_point_in_quadrilateral_to_rectangle(point, quadrilateral, arg_web_
     return float(transformed_x), float(transformed_y)
 
 
-def reflect_point_in_rectangle(point, rectangle_corners):
+def rotate_point_by_angle(point, rectangle_corners, rotation_angle=0):
     """
-    직사각형의 좌상단과 우하단 좌표만을 이용해 특정 점을 상하좌우 반전시킨 좌표로 변환합니다.
+    직사각형 내부의 특정 점을 지정된 각도로 회전시킨 좌표로 변환합니다.
 
     :param point: (px, py) 특정 점의 좌표
     :param rectangle_corners: [(x1, y1), (x2, y2)] 직사각형의 좌상단 및 우하단 좌표
-    :return: 상하좌우 반전된 새로운 좌표 (x', y')
+    :param rotation_angle: 회전 각도 (0, 90, 180, 270 중 하나, 시계방향 기준)
+    :return: 회전된 새로운 좌표 (x', y')
     """
     px, py = point
 
@@ -116,11 +123,51 @@ def reflect_point_in_rectangle(point, rectangle_corners):
     center_x = (top_left[0] + bottom_right[0]) / 2
     center_y = (top_left[1] + bottom_right[1]) / 2
 
-    # 상하좌우 반전
-    reflected_x = 2 * center_x - px
-    reflected_y = 2 * center_y - py
+    # 중심을 원점으로 이동
+    relative_x = px - center_x
+    relative_y = py - center_y
 
-    return reflected_x, reflected_y
+    # 각도에 따른 회전 변환
+    if rotation_angle == 0:
+        # 회전 없음
+        rotated_x = relative_x
+        rotated_y = relative_y
+    elif rotation_angle == 90:
+        # 시계방향 90도: (x, y) -> (y, -x)
+        rotated_x = relative_y
+        rotated_y = -relative_x
+    elif rotation_angle == 180:
+        # 180도: (x, y) -> (-x, -y)
+        rotated_x = -relative_x
+        rotated_y = -relative_y
+    elif rotation_angle == 270:
+        # 시계방향 270도 (반시계 90도): (x, y) -> (-y, x)
+        rotated_x = -relative_y
+        rotated_y = relative_x
+    else:
+        raise ValueError(f"지원하지 않는 회전 각도입니다: {rotation_angle}. 0, 90, 180, 270 중 하나를 사용하세요.")
+
+    # 다시 원래 중심 위치로 이동
+    final_x = rotated_x + center_x
+    final_y = rotated_y + center_y
+
+    return final_x, final_y
+
+
+def cal_web_position(car: Car, moving_spaces: Mapping[int, MovingSpace]) -> tuple[float, float]:
+
+    if car.space_id is None:
+        return 0, 0
+
+    transformed_x, transformed_y = transform_point_in_quadrilateral_to_rectangle(
+        car.position,
+        moving_spaces[car.space_id].position,
+        web_coordinates[car.space_id],
+    )
+
+    reflect_x, reflect_y = rotate_point_by_angle((transformed_x, transformed_y), web_coordinates[car.space_id], CAMERA_ROTATION_ANGLE)
+
+    return reflect_x, reflect_y
 
 
 def cal_display_direction(display_center: tuple[float, float], next_center: tuple[float, float]) -> Direction:
@@ -143,18 +190,6 @@ def cal_display_direction(display_center: tuple[float, float], next_center: tupl
             return Direction.UP
         else:
             return Direction.DOWN
-
-
-def cal_web_position(space_id, car_id, cars):
-    transformed_x, transformed_y = transform_point_in_quadrilateral_to_rectangle(
-        cars[car_id]["position"],
-         walking_space[space_id]["position"],
-         web_coordinates[space_id]
-    )
-
-    reflect_x, reflect_y = reflect_point_in_rectangle((transformed_x, transformed_y), web_coordinates[space_id])
-
-    return reflect_x, reflect_y
 
 
 def to_dict_mapping(objects: Mapping[int, T]) -> dict[int, dict]:
@@ -201,14 +236,13 @@ def send_to_server(uri, route_data_queue):
             parking_spaces: Mapping[int, ParkingSpace] = data["parking"]  # 주차 구역 데이터
             moving_spaces: Mapping[int, MovingSpace] = data["moving"]  # 이동 구역 데이터
 
-            cars_dict = {}
             display_dict: dict[int, list[tuple[str, str]]] = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] }
+            web_positions: dict[int, tuple[float, float]] = {}  # 차량 ID -> 웹 좌표 매핑
 
             for car_id, car in cars.items():
-                cars_dict[car_id] = car.to_dict()
-
                 route = car.route
 
+                # 디스플레이 방향 계산
                 if route and len(route) >= 2 and route[1] in DISPLAY_SPACE:
                     dispaly_center = moving_spaces[route[1]].center_position
 
@@ -224,35 +258,25 @@ def send_to_server(uri, route_data_queue):
 
                     display_dict[display_number].append((car.car_number, direction.value))
 
+                # 이동 중인 차량의 웹 좌표 계산
+                if car.is_moving():
+                    web_x, web_y = cal_web_position(car, moving_spaces)
+                    web_positions[car_id] = (web_x, web_y)
+
             # 모든 객체를 딕셔너리로 변환 (단일 함수 사용)
             send_data = {
                 "time": time.time(),
                 "cars": to_dict_mapping(cars),
+                "web_positions": web_positions,  # 이동 중인 차량의 웹 좌표
                 "parking_spaces": to_dict_mapping(parking_spaces),
                 "moving_spaces": to_dict_mapping(moving_spaces),
                 "display": display_dict,
             }
 
-            print(f"Send data: {send_data}")
-
-            # for space_id, car_ids in walking_cars.items():  # car_ids는 리스트가 됨
-            #     for car_id in car_ids:
-            #         # 차량 목록에 없는 경우 무시
-            #         if car_id not in cars:
-            #             continue
-
-            #         # 웹페이지에 표시할 좌표 계산
-            #         x, y = cal_web_position(space_id, car_id, cars)
-            #         if car_id not in moving_data:
-            #             moving_data[car_id] = {"car_number": cars[car_id]["car_number"],
-            #                                    "status": cars[car_id]["status"],
-            #                                    "entry_time": cars[car_id]["entry_time"]}
-            #         moving_data[car_id]["position"] = (x, y)
-
             # # 서버로 데이터 전송
             # sio.emit('message', send_data)
 
-            # # 전송 데이터를 파일로 기록
+            # 전송 데이터를 파일로 기록
             # with open('send_data.json', 'a', encoding='utf-8') as f:
             #     json.dump(send_data, f, ensure_ascii=False, indent=2)
             #     f.write('\n' + '='*50 + '\n')  # 구분선 추가

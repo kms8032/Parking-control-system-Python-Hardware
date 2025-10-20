@@ -1,8 +1,6 @@
 {
   "0": {
     "name": "A1",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [855, 725],
       [963, 725],
@@ -13,8 +11,6 @@
   },
   "1": {
     "name": "A2",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [752, 723],
       [862, 724],
@@ -25,8 +21,6 @@
   },
   "2": {
     "name": "A3",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [646, 724],
       [759, 721],
@@ -37,8 +31,6 @@
   },
   "3": {
     "name": "A4",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [547, 724],
       [657, 725],
@@ -49,8 +41,6 @@
   },
   "4": {
     "name": "A5",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [435, 726],
       [553, 724],
@@ -61,8 +51,6 @@
   },
   "5": {
     "name": "A6",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [335, 730],
       [444, 724],
@@ -73,8 +61,6 @@
   },
   "6": {
     "name": "B1",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [692, 448],
       [814, 447],
@@ -85,8 +71,6 @@
   },
   "7": {
     "name": "B2",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [568, 448],
       [702, 444],
@@ -97,8 +81,6 @@
   },
   "8": {
     "name": "B3",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [700, 373],
       [815, 371],
@@ -109,8 +91,6 @@
   },
   "9": {
     "name": "B4",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [579, 378],
       [704, 376],
@@ -121,8 +101,6 @@
   },
   "10": {
     "name": "C1",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [709, 164],
       [824, 166],
@@ -133,8 +111,6 @@
   },
   "11": {
     "name": "C2",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [601, 170],
       [706, 168],
@@ -145,8 +121,6 @@
   },
   "12": {
     "name": "C3",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [711, 108],
       [826, 106],
@@ -157,8 +131,6 @@
   },
   "13": {
     "name": "C4",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [607, 106],
       [711, 108],
@@ -169,8 +141,6 @@
   },
   "14": {
     "name": "D1",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [254, 523],
       [388, 519],
@@ -181,20 +151,16 @@
   },
   "15": {
     "name": "D2",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [278, 444],
       [405, 440],
       [386, 532],
       [247, 530]
     ],
-    "near_moving_space_id": 6
+    "near_moving_space_id": 4
   },
   "16": {
     "name": "D3",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [296, 364],
       [421, 366],
@@ -205,20 +171,16 @@
   },
   "17": {
     "name": "D4",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [317, 298],
       [436, 296],
       [421, 376],
       [294, 374]
     ],
-    "near_moving_space_id": 9
+    "near_moving_space_id": 6
   },
   "18": {
     "name": "D5",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [338, 236],
       [451, 233],
@@ -229,20 +191,16 @@
   },
   "19": {
     "name": "D6",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [353, 170],
       [461, 169],
       [451, 239],
       [331, 242]
     ],
-    "near_moving_space_id": 11
+    "near_moving_space_id": 9
   },
   "20": {
     "name": "D7",
-    "status": "empty",
-    "car_id": null,
     "position": [
       [369, 117],
       [474, 119],
@@ -253,8 +211,16 @@
   },
   "21": {
     "name": "D8",
-    "status": "empty",
-    "car_id": null,
+    "position": [
+      [381, 52],
+      [489, 50],
+      [469, 122],
+      [366, 122]
+    ],
+    "near_moving_space_id": 11
+  },
+  "22": {
+    "name": "D9",
     "position": [
       [381, 52],
       [489, 50],

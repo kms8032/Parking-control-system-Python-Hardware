@@ -79,7 +79,7 @@ class Car:
             car_number (str): 차량 번호
             status (str): 차량 상태 (entry, parking, exit, Parking)
             entry_time (float): 입차 시간
-            position (Tuple[int, int]): 차량 위치
+            position (Tuple[int, int]): 차량 위치 (카메라 좌표)
             target_parking_space_id (Optional[int]): 주차할 구역 ID
             route (Optional[List[int]]): 경로
             space_id (Optional[int]): 마지막 방문 구역
@@ -89,7 +89,7 @@ class Car:
         self.status: CarStatus = status
         self.entry_time: float = entry_time
         self.parking_time: float = 0
-        self.position: Tuple[float, float] = position
+        self.position: Tuple[float, float] = position  # 카메라 좌표
         self.target_parking_space_id: Optional[int] = target_parking_space_id
         self.space_id: Optional[int] = space_id
         self.route: List[int] = []
@@ -253,6 +253,14 @@ class Car:
 
         self.route = []
         self.target_parking_space_id = None
+    
+    def is_moving(self) -> bool:
+        
+        return self.status != CarStatus.PARKING and self.space_id != None
+    
+    def is_parking(self) -> bool:
+        
+        return self.status == CarStatus.PARKING and self.space_id != None
 
     def to_dict(self) -> Dict[str, any]:
         """딕셔너리 형태로 변환"""
@@ -262,7 +270,7 @@ class Car:
             "status": self.status.value,  # Enum을 문자열로 변환
             "entry_time": self.entry_time,
             "parking_time": self.parking_time,
-            "position": self.position,
+            "position": self.position,  # 카메라 좌표
             "target_parking_space_id": self.target_parking_space_id,
             "route": self.route,
             "space_id": self.space_id

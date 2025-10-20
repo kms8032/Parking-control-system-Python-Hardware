@@ -44,7 +44,7 @@
       [334, 730]
     ],
     "congestion": 100,
-    "near_parking_space_id": [4, 5, 14],
+    "near_parking_space_id": [4, 5, 14, 15],
     "near_moving_space_id": [3, 6]
   },
   "5": {
@@ -68,7 +68,7 @@
       [381, 529]
     ],
     "congestion": 100,
-    "near_parking_space_id": [8, 9, 15, 16],
+    "near_parking_space_id": [8, 9, 16, 17],
     "near_moving_space_id": [4, 9]
   },
   "7": {
@@ -104,7 +104,7 @@
       [412, 377]
     ],
     "congestion": 100,
-    "near_parking_space_id": [17, 18],
+    "near_parking_space_id": [18, 19],
     "near_moving_space_id": [6, 8, 11]
   },
   "10": {
@@ -128,7 +128,7 @@
       [439, 247]
     ],
     "congestion": 100,
-    "near_parking_space_id": [12, 13, 19, 20],
+    "near_parking_space_id": [12, 13, 20, 21],
     "near_moving_space_id": [9, 14]
   },
   "12": {
@@ -164,7 +164,7 @@
       [468, 128]
     ],
     "congestion": 100,
-    "near_parking_space_id": [21],
+    "near_parking_space_id": [22],
     "near_moving_space_id": [11, 13]
   },
   "15": {
