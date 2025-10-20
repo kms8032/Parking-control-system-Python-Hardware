@@ -174,7 +174,7 @@ if space_type == "parking_space":
         print(f"Zone {idx}: {zone['name']} -> Moving Space {zone['near_moving_space_id']}")
 
     # JSON 파일로 저장
-    with open('parking_space2.json', 'w') as f:
+    with open('parking_space.json', 'w') as f:
         json.dump(parking_space, f, indent=2)
 
     print("\n✅ Parking space data saved to parking_space.json.")
@@ -187,7 +187,7 @@ elif space_type == "moving_space":
         print(f"  - Near Moving: {zone['near_moving_space_id']}")
 
     # JSON 파일로 저장
-    with open('moving_space2.json', 'w') as f:
+    with open('moving_space.json', 'w') as f:
         json.dump(moving_space, f, indent=2)
 
     print("\n✅ Moving space data saved to moving_space.json.")

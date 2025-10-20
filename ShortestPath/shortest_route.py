@@ -88,7 +88,7 @@ class Car:
         self.car_number: str = car_number
         self.status: CarStatus = status
         self.entry_time: float = entry_time
-        self.parking_time: float = 0
+        self.parking_time: Optional[float] = None
         self.position: Tuple[float, float] = position  # 카메라 좌표
         self.target_parking_space_id: Optional[int] = target_parking_space_id
         self.space_id: Optional[int] = space_id
@@ -143,6 +143,10 @@ class Car:
             # 다른 이동 구역에서 들어온 경우 기존의 이동 구역에서 차량 삭제
             if self.space_id is not None:
                 moving_space_instances[self.space_id].remove_car(self.car_id)
+            
+            if self.target_parking_space_id is not None:
+                parking_space_instances[self.target_parking_space_id].set_empty()
+                
 
         parking_space.append_car(self.car_id)
         self.set_parking(parking_space)
@@ -152,7 +156,10 @@ class Car:
         
         # 주차 구역에서 이동 구역으로 들어온 경우
         if self.status == CarStatus.PARKING:
-            pass
+
+            if self.space_id is not None:
+                parking_space_instances[self.space_id].remove_car(self.car_id)
+                parking_space_instances[self.space_id].set_empty()
 
         # 이동 구역에서 이동 구역으로 들어온 경우
         else:
@@ -164,15 +171,15 @@ class Car:
             elif self.space_id is not None:
                 moving_space_instances[self.space_id].remove_car(self.car_id)
         
+        self.set_moving(moving_space)
+        
         # 루트에 있던 구역으로 간 경우
         if moving_space.space_id in self.route:
             moving_space.append_car(self.car_id)
-            self.set_moving(moving_space)
         
-        # 루트에 없는 구역으로 간 경우
+        # 루트에 없는 구역으로 간 경우 재계산
         else:
             moving_space.append_car(self.car_id)
-            self.set_moving(moving_space)
             self.cal_route()
 
 
@@ -187,7 +194,6 @@ class Car:
     def set_moving(self, moving_space: MovingSpace):
         """차량이 주차 구역에서 이동 구역 또는 이동 구역에서 다른 이동 구역으로 들어왔을 때 실행되는 함수"""
 
-        self.parking_time = 0
         self.space_id = moving_space.space_id
         self.status = CarStatus.EXIT if self.status == CarStatus.PARKING else self.status
 
@@ -206,6 +212,7 @@ class Car:
         목표로 하는 주차 구역 또한 이곳에서 설정
         """
         self.clear_route()
+        print(f"아이디: {self.car_id}, 타겟: {self.target_parking_space_id}, 구역: {self.space_id} 재계산")
 
         if self.space_id is not None:
 
@@ -226,12 +233,13 @@ class Car:
             if moving_space_id is not None and parking_space_id is not None:
                 route = route[:route.index(moving_space_id) + 1]
                 parking_space_instances[parking_space_id].set_target(self.car_id)
+                self.target_parking_space_id = parking_space_id
             
             else:
                 parking_space_instances[target_parking_space_id].set_target(self.car_id)
+                self.target_parking_space_id = target_parking_space_id
 
             self.set_route(route)
-            self.target_parking_space_id = target_parking_space_id
 
 
     def set_route(self, route: List[int]) -> None:
@@ -250,6 +258,9 @@ class Car:
             # 루트가 비어있지 않을 경우 기존 루트의 혼잡도를 제거
             for space_id in self.route:
                 moving_space_instances[space_id].remove_route(self.car_id)
+
+        if self.target_parking_space_id is not None:
+            parking_space_instances[self.target_parking_space_id].set_empty()
 
         self.route = []
         self.target_parking_space_id = None
@@ -443,10 +454,19 @@ class ParkingSpace(Space):
     def set_empty(self):
         """주차 구역을 empty로 설정하는 함수"""
 
-        self.parking_time = None
-        self.car_id = None
-        self.car_number = None
-        self.status = ParkingSpaceEnum.EMPTY
+        if len(self.car_set) == 0:
+            self.parking_time = None
+            self.car_id = None
+            self.car_number = None
+            self.status = ParkingSpaceEnum.EMPTY
+        
+        else:
+            car_id = self.car_set.copy().pop()
+            car = car_number_instances[car_id]
+            self.parking_time = car.parking_time
+            self.car_id = car_id
+            self.car_number = car.car_number
+            self.status = ParkingSpaceEnum.OCCUPIED
 
     def set_target(self, car_id: int):
         """주차 구역을 target으로 설정하는 함수"""
@@ -532,6 +552,9 @@ class MovingSpace(Space):
         super().remove_car(car_id)
 
         self.congestion -= MovingSpace.CAR_CONGESTION
+
+        # if len(self.car_set) == 0:
+            
 
     def append_route(self, car_id: int):
         """루트로 해당 구역이 지정 되었을 때 실행되는 함수"""
@@ -642,6 +665,10 @@ def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
             position=value
         )
 
+        # 주차한 차량 우선 계산
+        for _, car in car_number_instances.items():
+            if (parking_space := check_position(car.position, parking_space_instances)) is not None:
+                car.update_in_parking(parking_space)
 
 def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]):
     """차량이 입차할 때 번호를 받아 차량 인스턴스를 생성하는 함수"""
@@ -660,9 +687,11 @@ def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]
     )
 
 
-def car_exit():
+def car_exit(car: Car):
     """차량이 출차하는 함수"""
     print("출차하는 차량이 있습니다.")
+    car.delete_car()
+    del car_number_instances[car.car_id]
 
 
 def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue):
@@ -672,7 +701,6 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
         yolo_data_queue (Queue): yolo로 추적한 데이터를 받기 위한 큐
         car_number_data_queue (Queue): uart로 수신 받은 차량 번호 데이터 큐
         route_data_queue (Queue): send_to_server로 데이터를 전달하기 위한 큐
-        serial_port (str): 시리얼 포트
     """
 
     while True:
@@ -694,23 +722,28 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                     car.update_in_parking(parking_space)
                 
                 # 이동 구역에 있는지 확인 하고 처리
-                elif (moving_space := check_position(position, moving_space_instances)) != None:
+                elif (moving_space := check_position(position, moving_space_instances)) is not None:
 
                     # 차량이 출구 구역에 있는 경우
                     if moving_space.name == "exit":
-                        car_exit()
+                        car_exit(car)
                     
                     else:
                         car.update_in_moving(moving_space)
                 
                 # 구역 밖 처리
                 else:
-                    pass
+                    car_number_instances[car_id].delete_car()
+                    del car_number_instances[car_id]
 
             # 등록되지 않은 차량이 입차 구역에 있으며 입차기로부터 번호판을 받은 경우
             elif moving_space_instances[15].is_car_in_space(position[0], position[1]) and car_number_data_queue.qsize() > 0:
                 entry(car_id, car_number_data_queue, position)
 
+        # car_number_instances에 있으나 car_tracks에 없는 차량 삭제 (추적이 끊긴 차량)
+        for car_id in car_number_instances.keys():
+            if car_id not in car_tracks:
+                car_number_instances[car_id].delete_car()
 
         # 차량 데이터 전송 (cars: 차량 정보, parking: 주차 구역 정보, moving: 이동 구역 정보)
         # MappingProxyType을 사용하여 read-only view 생성 (메모리 효율적)
