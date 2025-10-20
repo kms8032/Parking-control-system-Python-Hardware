@@ -92,7 +92,6 @@ def one_frame(cap, model, tracker, yolo_data_queue, frame_queue, device):
         tracked_objects[int(track_id)] = (x_center, y_center)
 
     # 객체 정보를 큐에 저장
-    print("yolo_tracking: ", tracked_objects)
     yolo_data_queue.put(tracked_objects)
 
     # 프레임을 메인 스레드로 전송 (GUI 표시용)

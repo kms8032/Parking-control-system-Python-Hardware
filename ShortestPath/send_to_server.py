@@ -3,15 +3,11 @@
 import socketio
 import time
 import queue
-import json
-import serial
 import numpy as np
 import cv2
-import platform
 from enum import Enum
-from types import MappingProxyType
 from typing import Mapping, TypeVar, Protocol
-from shortest_route import Car, CarStatus, ParkingSpace, MovingSpace
+from shortest_route import Car, ParkingSpace, MovingSpace
 
 # to_dict 메서드를 가진 객체를 위한 Protocol
 class ToDictable(Protocol):
@@ -208,13 +204,17 @@ def to_dict_mapping(objects: Mapping[int, T]) -> dict[int, dict]:
 # 소켓 지정
 sio = socketio.Client(reconnection=True, reconnection_attempts=5, reconnection_delay=2)
 
-# @sio.event
-# def connect():
-#     print("Connection established")
+@sio.event
+def connect():
+    print("✅ Express 서버에 연결되었습니다.")
 
-# @sio.event
-# def disconnect():
-#     print("Disconnected from server")
+@sio.event
+def disconnect():
+    print("❌ Express 서버와의 연결이 끊어졌습니다.")
+
+@sio.event
+def connect_error(data):
+    print(f"⚠️ 연결 오류: {data}")
 
 def send_to_server(uri, route_data_queue):
     # 서버 연결
@@ -222,8 +222,14 @@ def send_to_server(uri, route_data_queue):
     global previous_arduino_data
     global walking_space
 
-    # 서버 연결
-    # sio.connect(uri)
+    # 서버 연결 시도
+    try:
+        print(f"🔌 Express 서버 연결 시도: {uri}")
+        sio.connect(uri, transports=['websocket', 'polling'])
+        print("✅ Socket.IO 연결 성공")
+    except Exception as e:
+        print(f"❌ 서버 연결 실패: {e}")
+        print("⚠️ 오프라인 모드로 계속 실행합니다...")
 
     while True:
         try:
@@ -263,23 +269,34 @@ def send_to_server(uri, route_data_queue):
                     web_x, web_y = cal_web_position(car, moving_spaces)
                     web_positions[car_id] = (web_x, web_y)
 
-            # 모든 객체를 딕셔너리로 변환 (단일 함수 사용)
+            # Express 서버가 요구하는 형식으로 데이터 변환
             send_data = {
-                "time": time.time(),
-                "cars": to_dict_mapping(cars),
+                "time": time.time(),    # 현재 시간
+                "cars": to_dict_mapping(cars),  # 차량 정보
+                "parking_spaces": to_dict_mapping(parking_spaces),  # 차량 구역 정보
+                "moving_spaces": to_dict_mapping(moving_spaces),    # 이동 구역 정보
                 "web_positions": web_positions,  # 이동 중인 차량의 웹 좌표
-                "parking_spaces": to_dict_mapping(parking_spaces),
-                "moving_spaces": to_dict_mapping(moving_spaces),
-                "display": display_dict,
+                "display": display_dict,  # 디스플레이 방향 정보
             }
 
-            # # 서버로 데이터 전송
-            # sio.emit('message', send_data)
+            # Express 서버로 데이터 전송 (Socket.IO 이벤트: 'vehicle_data')
+            try:
+                if sio.connected:
+                    sio.emit('vehicle_data', send_data)
+                    print(f"📤 데이터 전송 완료: 차량 {len(cars)}대")
+                else:
+                    print("⚠️ 서버 연결 끊김 - 재연결 시도 중...")
+                    try:
+                        sio.connect(uri, transports=['websocket', 'polling'])
+                    except:
+                        pass
+            except Exception as e:
+                print(f"❌ 데이터 전송 오류: {e}")
 
-            # 전송 데이터를 파일로 기록
+            # 디버깅용: 데이터를 파일로 기록
             # with open('send_data.json', 'a', encoding='utf-8') as f:
             #     json.dump(send_data, f, ensure_ascii=False, indent=2)
-            #     f.write('\n' + '='*50 + '\n')  # 구분선 추가
+            #     f.write('\n' + '='*50 + '\n')
 
         except queue.Empty:
             # Queue가 비었을 때는 잠시 대기

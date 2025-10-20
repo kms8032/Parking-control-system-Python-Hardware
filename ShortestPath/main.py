@@ -1,13 +1,11 @@
 # 각 쓰레드를 생성하고 변수를 부여하여 시작하는 메인 프로그램
 
 import threading
-import time
 from queue import Queue, Empty
 import cv2
 import yolo_tracking_deep_sort as yolo_deep_sort
 # import shortest_route as sr
 import send_to_server as server
-import uart
 import platform
 import json
 import numpy as np
@@ -67,8 +65,8 @@ GREEN = (0, 255, 0)
 YELLOW = (0, 255, 255)
 
 if platform.system() == "Darwin":
-    # 서버 주소 및 포트
-    URI = "ws://127.0.0.1:5002"
+    # 서버 주소 및 포트 (Socket.IO)
+    URI = "http://127.0.0.1:3000"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
@@ -90,9 +88,9 @@ elif platform.system() == "Windows":
     # 비디오 소스
     VIDEO_SOURCE = 0
 
-else:   # Linux
-    # 서버 주소 및 포트
-    URI = "ws://192.168.0.41:5002"
+else:   # Linux (Jetson)
+    # 서버 주소 및 포트 (Socket.IO) - 실제 서버 IP로 변경 필요
+    URI = "http://0.0.0.0:3000"
     # 주차 구역 좌표 파일 경로
     PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
