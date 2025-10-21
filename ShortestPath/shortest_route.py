@@ -176,6 +176,7 @@ class Car:
         # 루트에 있던 구역으로 간 경우
         if moving_space.space_id in self.route:
             moving_space.append_car(self.car_id)
+            self.pop_route(moving_space.space_id)
         
         # 루트에 없는 구역으로 간 경우 재계산
         else:
@@ -265,6 +266,27 @@ class Car:
         self.route = []
         self.target_parking_space_id = None
     
+    def pop_route(self, space_id: int) -> None:
+        """
+        루트에 따라 이동할 경우 지나온 루트 제거 하는 함수
+
+        Args:
+            space_id: 현재 위치한 구역의 ID
+
+        Returns:
+            List[int]: 삭제된 구역 ID 리스트 (혼잡도 감소 처리를 위해)
+        """
+
+        if space_id not in self.route:
+            return
+
+        i = self.route.index(space_id)
+        removed_spaces = self.route[:i]
+        self.route = self.route[i:]
+
+        for removed_space in removed_spaces:
+            moving_space_instances[removed_space].remove_route(self.car_id)
+
     def is_moving(self) -> bool:
         
         return self.status != CarStatus.PARKING and self.space_id != None
@@ -539,8 +561,6 @@ class MovingSpace(Space):
     def append_car(self, car_id: int):
         if car_id in self.car_set:
             return
-        
-        self.remove_route(car_id)
 
         super().append_car(car_id)
         self.congestion += MovingSpace.CAR_CONGESTION
@@ -689,7 +709,6 @@ def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]
 
 def car_exit(car: Car):
     """차량이 출차하는 함수"""
-    print("출차하는 차량이 있습니다.")
     car.delete_car()
     del car_number_instances[car.car_id]
 
@@ -716,6 +735,9 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
 
                 car = car_number_instances[car_id]  # 차량 인스턴스
                 car.update_position(position)
+
+                if len(car.route) != 0:
+                    print(f"{car.car_id}번 루트: {car.route}")
                 
                 # 주차 구역에 있는지 확인 하고 처리
                 if (parking_space := check_position(position, parking_space_instances)) is not None:
@@ -725,7 +747,7 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                 elif (moving_space := check_position(position, moving_space_instances)) is not None:
 
                     # 차량이 출구 구역에 있는 경우
-                    if moving_space.name == "exit":
+                    if moving_space.space_id == 1:
                         car_exit(car)
                     
                     else:
