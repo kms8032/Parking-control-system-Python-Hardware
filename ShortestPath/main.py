@@ -4,7 +4,6 @@ import threading
 from queue import Queue, Empty
 import cv2
 import yolo_tracking_deep_sort as yolo_deep_sort
-# import shortest_route as sr
 import send_to_server as server
 import platform
 import json
@@ -89,14 +88,14 @@ elif platform.system() == "Windows":
     VIDEO_SOURCE = 0
 
 else:   # Linux (Jetson)
-    # 서버 주소 및 포트 (Socket.IO) - 실제 서버 IP로 변경 필요
-    URI = "http://0.0.0.0:3000"
+    # 서버 주소 및 포트 (Socket.IO)
+    URI = "http://192.168.0.48:3000"
     # 주차 구역 좌표 파일 경로
-    PARKING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/parking_space.json"
+    PARKING_SPACE_PATH = "/workspace/ShortestPath/position_file/parking_space.json"
     # 이동 구역 좌표 파일 경로
-    MOVING_SPACE_PATH = "/workspace/Parking-control-system-Python-Hardware-main/ShortestPath/position_file/moving_space.json"
+    MOVING_SPACE_PATH = "/workspace/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/workspace/best.pt"
+    MODEL_PATH = "/workspace/ShortestPath/model/best.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
 
@@ -184,7 +183,10 @@ try:
                 if track_id in car_numbers:
                     draw_car(frame_with_space, track.to_ltrb(), car_numbers[track_id])
 
-            # 메인 스레드에서 안전하게 GUI 표시
+            # 젯슨 환경에서 GUI 사이즈 조절을 위해 필요
+            cv2.namedWindow("YOLO Tracking", cv2.WINDOW_NORMAL)
+
+            # GUI 표시
             cv2.imshow("YOLO Tracking", frame_with_space)
 
             # 키 입력 처리 (1ms 대기)

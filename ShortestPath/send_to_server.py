@@ -28,18 +28,18 @@ CAMERA_ROTATION_ANGLE = 90  # 현재 90도 회전된 상태
 web_coordinates = {
     1: [(1066, -10), (1393, 0)],
     2: [(1066, 0), (1393, 237)],
-    3: [(1066, 238), (1393, 597)],
-    4: [(1066, 598), (1393, 799)],
-    5: [(802, 0), (1065, 237)],
-    6: [(802, 598), (1065, 799)],
-    7: [(546, 0), (801, 237)],
-    8: [(546, 238), (801, 597)],
-    9: [(546, 598), (801, 799)],
-    10: [(282, 0), (545, 237)],
-    11: [(282, 598), (545, 799)],
+    3: [(1066, 238), (1393, 592)],
+    4: [(1066, 593), (1393, 792)],
+    5: [(803, 0), (1065, 237)],
+    6: [(803, 593), (1065, 792)],
+    7: [(547, 0), (802, 237)],
+    8: [(547, 238), (802, 592)],
+    9: [(547, 593), (802, 792)],
+    10: [(282, 0), (546, 237)],
+    11: [(282, 593), (546, 792)],
     12: [(0, 0), (281, 237)],
-    13: [(0, 238), (281, 597)],
-    14: [(0, 598), (281, 799)],
+    13: [(0, 238), (281, 592)],
+    14: [(0, 593), (281, 792)],
     15: [(0, -10), (281, 0)]
 }
 
@@ -169,6 +169,8 @@ def cal_web_position(car: Car, moving_spaces: Mapping[int, MovingSpace]) -> tupl
 def cal_display_direction(display_center: tuple[float, float], next_center: tuple[float, float]) -> Direction:
     """
     중심점을 이용해서 다음 구역의 방향을 반환하는 함수
+
+    :return: 카메라가 보는 방향 기준 방향 반환
     """
     
     # display 구역과 다음 구역의 중심점 좌표 차이 계산
@@ -176,13 +178,13 @@ def cal_display_direction(display_center: tuple[float, float], next_center: tupl
     delta_y = abs(display_center[1] - next_center[1])
 
     if delta_x > delta_y:
-        if display_center[0] < next_center[0]:
+        if display_center[0] > next_center[0]:
             return Direction.LEFT
         else:
             return Direction.RIGHT
     
     else:
-        if display_center[1] < next_center[1]:
+        if display_center[1] > next_center[1]:
             return Direction.UP
         else:
             return Direction.DOWN
@@ -278,6 +280,11 @@ def send_to_server(uri, route_data_queue):
                 "web_positions": web_positions,  # 이동 중인 차량의 웹 좌표
                 "display": display_dict,  # 디스플레이 방향 정보
             }
+
+            print(display_dict)
+
+            for moving_id, moving in moving_spaces.items():
+                print(f"{moving_id}구역 혼잡도: {moving.congestion}")
 
             # Express 서버로 데이터 전송 (Socket.IO 이벤트: 'vehicle_data')
             try:
