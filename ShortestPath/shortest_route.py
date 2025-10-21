@@ -622,7 +622,7 @@ car_number_instances: dict[int, Car] = {}
 ### 함수 선언 ###
 
 # 쓰레드에서 실행 되는 메인 함수
-def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, id_match_car_number_queue):
+def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, id_match_car_number_queue, car_number_response_queue):
     """
     쓰레드에서 호출 되어 실행되는 메인 함수로 각각의 함수를 순서대로 실행
 
@@ -650,7 +650,7 @@ def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
     event.set()
 
     # 루프 실행
-    roop(yolo_data_queue, car_number_data_queue, route_data_queue, id_match_car_number_queue)
+    roop(yolo_data_queue, car_number_data_queue, route_data_queue, id_match_car_number_queue, car_number_response_queue)
 
 
 def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
@@ -690,7 +690,7 @@ def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
             if (parking_space := check_position(car.position, parking_space_instances)) is not None:
                 car.update_in_parking(parking_space)
 
-def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]):
+def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float], car_number_response_queue: Queue[bool]):
     """차량이 입차할 때 번호를 받아 차량 인스턴스를 생성하는 함수"""
 
     # 가장 최근의 데이터만 사용
@@ -700,11 +700,20 @@ def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]
 
     print(f"입차하는 차량이 있습니다: 입출차기에서 수신한 차량 번호: {car_number}")
 
+    target = get_target_parking_space_id((0, 0), CarStatus.ENTRY)
+
+    # 주차장이 만차인 경우
+    if target == -1:
+        car_number_response_queue.put(False)
+        return
+
     car_number_instances[car_id] = Car.create_entry_car(
         car_id=car_id,
         car_number=car_number,
         position=arg_position
     )
+
+    car_number_response_queue.put(True)
 
 
 def car_exit(car: Car):
@@ -713,7 +722,7 @@ def car_exit(car: Car):
     del car_number_instances[car.car_id]
 
 
-def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue):
+def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue, car_number_response_queue):
     """차량 추적 데이터와 차량 번호 데이터를 받아와 계산하는 함수
 
     Args:
@@ -760,7 +769,7 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
 
             # 등록되지 않은 차량이 입차 구역에 있으며 입차기로부터 번호판을 받은 경우
             elif moving_space_instances[15].is_car_in_space(position[0], position[1]) and car_number_data_queue.qsize() > 0:
-                entry(car_id, car_number_data_queue, position)
+                entry(car_id, car_number_data_queue, position, car_number_response_queue)
 
         # car_number_instances에 있으나 car_tracks에 없는 차량 삭제 (추적이 끊긴 차량)
         for car_id in car_number_instances.keys():

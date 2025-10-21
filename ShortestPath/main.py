@@ -8,7 +8,7 @@ import send_to_server as server
 import platform
 import json
 import numpy as np
-import socket_server
+import flask_server
 from shortest_route import Car, CarStatus
 import shortest_route as sr
 
@@ -106,6 +106,7 @@ init_event = threading.Event()
 # 공유할 데이터 큐
 yolo_data_queue = Queue()
 car_number_data_queue = Queue()
+car_number_response_queue = Queue() # 입차기에 응답할 데이터
 route_data_queue = Queue()
 frame_queue = Queue(maxsize=2)    # gui에 표시할 이미지
 id_match_car_number_queue: Queue[dict[int, Car]] = Queue(maxsize=2)
@@ -131,14 +132,16 @@ thread2 = threading.Thread(
         "event": init_event, 
         "parking_space_path": PARKING_SPACE_PATH, 
         "moving_space_path": MOVING_SPACE_PATH, 
-        "id_match_car_number_queue": id_match_car_number_queue
+        "id_match_car_number_queue": id_match_car_number_queue,
+        "car_number_response_queue": car_number_response_queue
     }
 )
 
 thread3 = threading.Thread(
-    target=socket_server.get_car_number,
+    target=flask_server.run_flask_server,
     kwargs={
         "car_number_data_queue": car_number_data_queue,
+        "response_data_queue": car_number_response_queue,
     }
 )
 
