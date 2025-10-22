@@ -622,7 +622,7 @@ car_number_instances: dict[int, Car] = {}
 ### 함수 선언 ###
 
 # 쓰레드에서 실행 되는 메인 함수
-def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, id_match_car_number_queue, car_number_response_queue):
+def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue, route_data_queue, event, parking_space_path, moving_space_path, id_match_car_number_queue, car_number_response_queue, exit_queue):
     """
     쓰레드에서 호출 되어 실행되는 메인 함수로 각각의 함수를 순서대로 실행
 
@@ -650,7 +650,7 @@ def main(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
     event.set()
 
     # 루프 실행
-    roop(yolo_data_queue, car_number_data_queue, route_data_queue, id_match_car_number_queue, car_number_response_queue)
+    roop(yolo_data_queue, car_number_data_queue, route_data_queue, id_match_car_number_queue, car_number_response_queue, exit_queue)
 
 
 def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
@@ -716,13 +716,15 @@ def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]
     car_number_response_queue.put(True)
 
 
-def car_exit(car: Car):
+def car_exit(car: Car, exit_queue: Queue):
     """차량이 출차하는 함수"""
+    
+    exit_queue.put({car.car_id: {car.car_number}})
     car.delete_car()
     del car_number_instances[car.car_id]
 
 
-def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue, car_number_response_queue):
+def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data_queue: Queue[str], route_data_queue, id_match_car_number_queue, car_number_response_queue, exit_queue):
     """차량 추적 데이터와 차량 번호 데이터를 받아와 계산하는 함수
 
     Args:
@@ -757,7 +759,7 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
 
                     # 차량이 출구 구역에 있는 경우
                     if moving_space.space_id == 1:
-                        car_exit(car)
+                        car_exit(car, exit_queue)
                     
                     else:
                         car.update_in_moving(moving_space)

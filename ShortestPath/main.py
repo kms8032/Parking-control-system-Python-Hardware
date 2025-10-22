@@ -110,6 +110,7 @@ car_number_response_queue = Queue() # 입차기에 응답할 데이터
 route_data_queue = Queue()
 frame_queue = Queue(maxsize=2)    # gui에 표시할 이미지
 id_match_car_number_queue: Queue[dict[int, Car]] = Queue(maxsize=2)
+exit_queue = Queue()
 
 # 쓰레드 생성
 thread1 = threading.Thread(
@@ -119,7 +120,7 @@ thread1 = threading.Thread(
         "frame_queue": frame_queue, 
         "event": init_event, 
         "model_path": MODEL_PATH, 
-        "video_source": VIDEO_SOURCE
+        "video_source": VIDEO_SOURCE,
     }
 )
 
@@ -133,7 +134,8 @@ thread2 = threading.Thread(
         "parking_space_path": PARKING_SPACE_PATH, 
         "moving_space_path": MOVING_SPACE_PATH, 
         "id_match_car_number_queue": id_match_car_number_queue,
-        "car_number_response_queue": car_number_response_queue
+        "car_number_response_queue": car_number_response_queue,
+        "exit_queue": exit_queue,
     }
 )
 
@@ -150,6 +152,7 @@ thread4 = threading.Thread(
     kwargs={
         "uri": URI, 
         "route_data_queue": route_data_queue,
+        "exit_queue": exit_queue,
     }
 )
 

@@ -218,7 +218,7 @@ def disconnect():
 def connect_error(data):
     print(f"⚠️ 연결 오류: {data}")
 
-def send_to_server(uri, route_data_queue):
+def send_to_server(uri, route_data_queue, exit_queue: queue.Queue):
     # 서버 연결
     global arduino_data
     global previous_arduino_data
@@ -270,6 +270,15 @@ def send_to_server(uri, route_data_queue):
                 if car.is_moving():
                     web_x, web_y = cal_web_position(car, moving_spaces)
                     web_positions[car_id] = (web_x, web_y)
+            
+            exit_dict = {}
+
+            # Queue에서 데이터 확인
+            try:
+                exit_data = exit_queue.get_nowait()
+                exit_dict = exit_data
+            except queue.Empty:
+                pass
 
             # Express 서버가 요구하는 형식으로 데이터 변환
             send_data = {
@@ -279,6 +288,7 @@ def send_to_server(uri, route_data_queue):
                 "moving_spaces": to_dict_mapping(moving_spaces),    # 이동 구역 정보
                 "web_positions": web_positions,  # 이동 중인 차량의 웹 좌표
                 "display": display_dict,  # 디스플레이 방향 정보
+                "exit": exit_dict,
             }
 
             print(display_dict)
