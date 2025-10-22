@@ -7,7 +7,7 @@ from ultralytics import YOLO
 import platform
 import torch
 
-def main(yolo_data_queue, event, model_path, video_source=0):
+def main(yolo_data_queue, frame_queue, event, model_path, video_source):
 
     model = YOLO(model_path)
 
@@ -16,12 +16,12 @@ def main(yolo_data_queue, event, model_path, video_source=0):
         cap = cv2.VideoCapture(video_source)
         device = torch.device("mps") if torch.backends.mps.is_available() else "cpu"
 
-    elif platform.system() == "Linux":
-        cap = cv2.VideoCapture(video_source, cv2.CAP_V4L2)
-        device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-
     elif platform.system() == "Windows":
         cap = cv2.VideoCapture(video_source)
+        device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+
+    else:   # Linux
+        cap = cv2.VideoCapture(video_source, cv2.CAP_V4L2)
         device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
@@ -32,16 +32,16 @@ def main(yolo_data_queue, event, model_path, video_source=0):
 
     # 사전에 주차 되어 있는 차량 데이터 전송
     for _ in range(11):
-        one_frame(cap, model, tracker, yolo_data_queue, device)
+        one_frame(cap, model, tracker, yolo_data_queue, frame_queue, device)
 
     # 사전 주차 되어 있는 차량의 번호판 입력 기다림
     event.wait()
 
     while True:
-        one_frame(cap, model, tracker, yolo_data_queue, device)
+        one_frame(cap, model, tracker, yolo_data_queue, frame_queue, device)
 
 
-def one_frame(cap, model, tracker, yolo_data_queue, device):
+def one_frame(cap, model, tracker, yolo_data_queue, frame_queue, device):
     """
     한 프레임을 처리하는 함수
     """
@@ -89,12 +89,14 @@ def one_frame(cap, model, tracker, yolo_data_queue, device):
         y_center = (ymin + ymax) // 2
 
         # 딕셔너리에 저장
-        tracked_objects[track_id] = {'position': (x_center, y_center)}
+        tracked_objects[int(track_id)] = (x_center, y_center)
 
     # 객체 정보를 큐에 저장
-    print("yolo_tracking: ", tracked_objects)
-    yolo_data_queue.put({"vehicles": tracked_objects})
+    yolo_data_queue.put(tracked_objects)
 
+    # 프레임을 메인 스레드로 전송 (GUI 표시용)
+    if not frame_queue.full():
+        frame_queue.put((frame, tracks))
 
 if __name__ == '__main__':
     que = queue.Queue()
