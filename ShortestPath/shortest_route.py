@@ -664,19 +664,79 @@ def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
 
     print("최초 실행 데이터", tracking_data)
 
+    # 무빙 스페이스 번호 매핑 (1번~15번 구역)
+    moving_space_with_car_number = {
+        1: "1001",
+        2: "1002",
+        3: "1003",
+        4: "1004",
+        5: "1005",
+        6: "1006",
+        7: "1007",
+        8: "1008",
+        9: "1009",
+        10: "1010",
+        11: "1011",
+        12: "1012",
+        13: "1013",
+        14: "1014",
+        15: "1015",
+    }
+
+    # 파킹 스페이스 번호 매핑 (0번~22번 구역)
+    parking_space_with_car_number = {
+        0: "2000",
+        1: "2001",
+        2: "2002",
+        3: "2003",
+        4: "2004",
+        5: "2005",
+        6: "2006",
+        7: "2007",
+        8: "2008",
+        9: "2009",
+        10: "2010",
+        11: "2011",
+        12: "2012",
+        13: "2013",
+        14: "2014",
+        15: "2015",
+        16: "2016",
+        17: "2017",
+        18: "2018",
+        19: "2019",
+        20: "2020",
+        21: "2021",
+        22: "2022",
+    }
+
     for key, value in tracking_data.items():
-        for _, parking_space in parking_space_instances.items():
+
+        matching_parking_space_id = None
+        matching_moving_space_id = None
+
+        for parking_space_id, parking_space in parking_space_instances.items():
             if parking_space.is_car_in_space(value[0], value[1]):
                 print(parking_space.name, "구역", end=", ")
+                matching_parking_space_id = parking_space_id
 
-        for _, moving_space in moving_space_instances.items():
+        for moving_space_id, moving_space in moving_space_instances.items():
             if moving_space.is_car_in_space(value[0], value[1]):
                 print(moving_space.name, "구역", end=", ")
+                matching_moving_space_id = moving_space_id
 
-        car_number = input(f"id {key}번 차량 번호 (차량이 아닌 오인식 객체일 경우 'del' 입력): ")
-        # del을 입력 하면 해당 차량은 제외
-        if car_number == "del":
-            continue
+        if matching_parking_space_id in parking_space_with_car_number:
+            car_number = parking_space_with_car_number[matching_parking_space_id]
+        
+        elif matching_moving_space_id in moving_space_with_car_number:
+            car_number = moving_space_with_car_number[matching_moving_space_id]
+
+        else:
+            car_number = input(f"id {key}번 차량 번호 (차량이 아닌 오인식 객체일 경우 'del' 입력): ")
+
+            # del을 입력 하면 해당 차량은 제외
+            if car_number == "del":
+                continue
 
         # 차량 생성
         car_number_instances[key] = Car.create_entry_car(
@@ -719,7 +779,7 @@ def entry(car_id: int, data_queue: Queue[str], arg_position: tuple[float, float]
 def car_exit(car: Car, exit_queue: Queue):
     """차량이 출차하는 함수"""
     
-    exit_queue.put({car.car_id: {car.car_number}})
+    exit_queue.put({car.car_id: {"car_number": car.car_number}})
     car.delete_car()
     del car_number_instances[car.car_id]
 
