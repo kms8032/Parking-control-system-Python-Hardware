@@ -237,7 +237,7 @@ def send_to_server(uri, route_data_queue, exit_queue: queue.Queue):
         try:
             # Queue에서 데이터가 있을 때까지 대기
             # MappingProxyType으로 받은 read-only 데이터
-            data = route_data_queue.get(timeout=1)
+            data = route_data_queue.get(timeout=0.01)
 
             # 타입 언패킹
             cars: Mapping[int, Car] = data["cars"]  # 차량 데이터
@@ -291,10 +291,10 @@ def send_to_server(uri, route_data_queue, exit_queue: queue.Queue):
                 "exit": exit_dict,
             }
 
-            print(display_dict)
+            # print(display_dict)
 
-            for moving_id, moving in moving_spaces.items():
-                print(f"{moving_id}구역 혼잡도: {moving.congestion}")
+            # for moving_id, moving in moving_spaces.items():
+            #     print(f"{moving_id}구역 혼잡도: {moving.congestion}")
 
             # Express 서버로 데이터 전송 (Socket.IO 이벤트: 'vehicle_data')
             try:
@@ -316,7 +316,4 @@ def send_to_server(uri, route_data_queue, exit_queue: queue.Queue):
             #     f.write('\n' + '='*50 + '\n')
 
         except queue.Empty:
-            # Queue가 비었을 때는 잠시 대기
-            print("Queue is empty")
-            time.sleep(1)
             continue

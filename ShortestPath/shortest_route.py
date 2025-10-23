@@ -12,9 +12,6 @@ from queue import Queue
 from enum import Enum
 from abc import ABC
 
-# TODO 입차 및 출차 코드 수정 필요
-# TODO 
-
 ### Enum 정의 ###
 
 class CarStatus(Enum):
@@ -724,6 +721,10 @@ def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
             if moving_space.is_car_in_space(value[0], value[1]):
                 print(moving_space.name, "구역", end=", ")
                 matching_moving_space_id = moving_space_id
+        
+        # 구역 내에 존재하지 않는 경우　
+        if matching_parking_space_id is None and matching_moving_space_id is None:
+            continue
 
         if matching_parking_space_id in parking_space_with_car_number:
             car_number = parking_space_with_car_number[matching_parking_space_id]
