@@ -26,6 +26,7 @@ def main(yolo_data_queue, frame_queue, event, model_path, video_source, frame_wi
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
+    cap.set(cv2.CAP_PROP_FPS, 30)
 
     # 사전에 주차 되어 있는 차량 데이터 전송
     for _ in range(11):
@@ -45,17 +46,13 @@ def one_frame(cap, model, yolo_data_queue, frame_queue, device):
     """
     한 프레임을 처리하는 함수 (ByteTrack 사용)
     """
-    with profiler.measure("1. Frame Read"):
-        ret, frame = cap.read()
+    ret, frame = cap.read()
     if not ret:
         print("Cam Error")
         return
 
-    # YOLOv8 내장 ByteTrack으로 추적
-    # persist=True: 트래킹 정보 유지
-    # tracker="bytetrack.yaml": ByteTrack 알고리즘 사용
-    with profiler.measure("2. YOLO Track (ByteTrack)"):
-        results = model.track(frame, device=device, persist=True, tracker="bytetrack.yaml")
+    # YOLOv8 내장 ByteTrack 이용
+    results = model.track(frame, device=device, persist=True, tracker="custom_bytetrack.yaml")
 
     # 추적 결과 추출
     result = results[0]
@@ -63,29 +60,27 @@ def one_frame(cap, model, yolo_data_queue, frame_queue, device):
     # 객체 정보 저장을 위한 딕셔너리
     tracked_objects = {}
 
-    with profiler.measure("3. Extract Tracking Results"):
-        # boxes가 있고 id가 있는 경우 (추적 성공)
-        if result.boxes is not None and result.boxes.id is not None:
-            boxes = result.boxes.xyxy.cpu().numpy()  # 바운딩 박스 좌표
-            track_ids = result.boxes.id.cpu().numpy().astype(int)  # 추적 ID
+    # boxes가 있고 id가 있는 경우 (추적 성공)
+    if result.boxes is not None and result.boxes.id is not None:
+        boxes = result.boxes.xyxy.cpu().numpy()  # 바운딩 박스 좌표
+        track_ids = result.boxes.id.cpu().numpy().astype(int)  # 추적 ID
 
-            for box, track_id in zip(boxes, track_ids):
-                xmin, ymin, xmax, ymax = box
-                x_center = int((xmin + xmax) / 2)
-                y_center = int((ymin + ymax) / 2)
+        for box, track_id in zip(boxes, track_ids):
+            xmin, ymin, xmax, ymax = box
+            x_center = int((xmin + xmax) / 2)
+            y_center = int((ymin + ymax) / 2)
 
-                # 딕셔너리에 저장
-                tracked_objects[int(track_id)] = (x_center, y_center)
+            # 딕셔너리에 저장
+            tracked_objects[int(track_id)] = (x_center, y_center)
 
-    with profiler.measure("4. Queue Put"):
-        # 객체 정보를 큐에 저장
-        yolo_data_queue.put(tracked_objects)
+    # 객체 정보를 큐에 저장
+    yolo_data_queue.put(tracked_objects)
 
-        # 프레임을 메인 스레드로 전송 (GUI 표시용)
-        # ByteTrack 결과를 DeepSORT와 호환되는 형태로 변환
-        if not frame_queue.full():
-            tracks = create_track_objects(result)
-            frame_queue.put((frame, tracks))
+    # 프레임을 메인 스레드로 전송 (GUI 표시용)
+    # ByteTrack 결과를 DeepSORT와 호환되는 형태로 변환
+    if not frame_queue.full():
+        tracks = create_track_objects(result)
+        frame_queue.put((frame, tracks))
 
 class Track:
     """DeepSORT의 Track 객체와 호환되는 간단한 클래스"""
