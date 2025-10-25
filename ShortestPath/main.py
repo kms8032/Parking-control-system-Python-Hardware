@@ -72,12 +72,12 @@ if platform.system() == "Darwin":
     # 이동 구역 좌표 파일 경로
     MOVING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/model/v2_best_small.pt"
+    MODEL_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/model/v3_best_medium.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
 
-    FRAME_WIDTH = 1080
-    FRAME_HEIGHT = 560
+    FRAME_WIDTH = 1920
+    FRAME_HEIGHT = 1080
 
 elif platform.system() == "Windows":
     # 서버 주소 및 포트
@@ -102,7 +102,7 @@ else:   # Linux (Jetson)
     # 이동 구역 좌표 파일 경로
     MOVING_SPACE_PATH = "/workspace/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/workspace/ShortestPath/model/best.pt"
+    MODEL_PATH = "/workspace/ShortestPath/model/v4_best_medium.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
 

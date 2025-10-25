@@ -80,8 +80,8 @@ if platform.system() == 'Darwin':
 elif platform.system() == 'Linux':
     cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 560)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
 if not cap.isOpened():
     print("웹캠을 열 수 없습니다.")
     exit()

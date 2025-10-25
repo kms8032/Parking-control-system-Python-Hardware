@@ -5,7 +5,6 @@ import cv2
 from ultralytics import YOLO
 import platform
 import torch
-from performance_profiler import profiler
 
 def main(yolo_data_queue, frame_queue, event, model_path, video_source, frame_width, frame_height, stop_event):
 
@@ -35,11 +34,8 @@ def main(yolo_data_queue, frame_queue, event, model_path, video_source, frame_wi
     # 사전 주차 되어 있는 차량의 번호판 입력 기다림
     event.wait()
 
-    try:
-        while not stop_event.is_set():
-            one_frame(cap, model, yolo_data_queue, frame_queue, device)
-    finally:
-        profiler.print_stats()
+    while not stop_event.is_set():
+        one_frame(cap, model, yolo_data_queue, frame_queue, device)
 
 
 def one_frame(cap, model, yolo_data_queue, frame_queue, device):
