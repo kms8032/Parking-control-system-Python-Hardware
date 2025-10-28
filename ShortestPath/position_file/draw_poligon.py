@@ -112,7 +112,7 @@ while True:
         print("Invalid choice, please select 1 or 2.")
 
 # 윈도우 설정 및 마우스 콜백 함수 등록
-cv2.namedWindow('Zones')
+cv2.namedWindow('Zones', cv2.WINDOW_NORMAL)
 cv2.setMouseCallback('Zones', draw_polygon)
 
 zone_index = 0  # 구역 번호를 위한 인덱스
