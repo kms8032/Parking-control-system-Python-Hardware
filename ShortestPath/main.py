@@ -3,7 +3,8 @@
 import threading
 from queue import Queue, Empty
 import cv2
-import yolo_tracking_deep_sort as yolo_deep_sort
+# import yolo_tracking_deep_sort as yolo_deep_sort
+import yolo_tracking_bytetrack as yolo_deep_sort
 import send_to_server as server
 import platform
 import json
@@ -71,9 +72,12 @@ if platform.system() == "Darwin":
     # 이동 구역 좌표 파일 경로
     MOVING_SPACE_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/model/v2_best_small.pt"
+    MODEL_PATH = "/Users/kyumin/Parking-control-system-Python-Hardware/ShortestPath/model/v3_best_medium.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
+
+    FRAME_WIDTH = 1920
+    FRAME_HEIGHT = 1080
 
 elif platform.system() == "Windows":
     # 서버 주소 및 포트
@@ -87,6 +91,9 @@ elif platform.system() == "Windows":
     # 비디오 소스
     VIDEO_SOURCE = 0
 
+    FRAME_WIDTH = 1920
+    FRAME_HEIGHT = 1080
+
 else:   # Linux (Jetson)
     # 서버 주소 및 포트 (Socket.IO)
     URI = "http://192.168.0.48:3000"
@@ -95,9 +102,12 @@ else:   # Linux (Jetson)
     # 이동 구역 좌표 파일 경로
     MOVING_SPACE_PATH = "/workspace/ShortestPath/position_file/moving_space.json"
     # YOLO 모델 경로
-    MODEL_PATH = "/workspace/ShortestPath/model/best.pt"
+    MODEL_PATH = "/workspace/ShortestPath/model/v4_best_medium.pt"
     # 비디오 소스
     VIDEO_SOURCE = 0
+
+    FRAME_WIDTH = 1920
+    FRAME_HEIGHT = 1080
 
 # 프로그램 종료 플래그
 stop_event = threading.Event()
@@ -121,6 +131,9 @@ thread1 = threading.Thread(
         "event": init_event, 
         "model_path": MODEL_PATH, 
         "video_source": VIDEO_SOURCE,
+        "frame_width": FRAME_WIDTH,
+        "frame_height": FRAME_HEIGHT,
+        "stop_event": stop_event, # 성능 체크
     }
 )
 
@@ -167,16 +180,13 @@ moving_data = load_json(MOVING_SPACE_PATH)
 
 try:
     # 메인 루프에서 프레임을 받아 GUI 표시
+    car_numbers = {}
     while True:
         try:
-            # 큐를 비워 항상 최신 데이터를 가져옴
-            while not frame_queue.empty():
-                frame_queue.get_nowait()
-            while not id_match_car_number_queue.empty():
-                id_match_car_number_queue.get_nowait()
+            if not id_match_car_number_queue.empty():
+                car_numbers = id_match_car_number_queue.get_nowait()
 
             frame, tracks = frame_queue.get(timeout=0.1)
-            car_numbers = id_match_car_number_queue.get(timeout=0.1)
 
             # 구역 작성
             frame_with_space = draw_spaces(frame, parking_data, moving_data)

@@ -12,9 +12,6 @@ from queue import Queue
 from enum import Enum
 from abc import ABC
 
-# TODO 입차 및 출차 코드 수정 필요
-# TODO 
-
 ### Enum 정의 ###
 
 class CarStatus(Enum):
@@ -619,6 +616,10 @@ moving_space_instances: Dict[int, MovingSpace] = {}
 # 추적하는 차량의 인스턴스를 관리하는 딕셔너리
 car_number_instances: dict[int, Car] = {}
 
+# 트래킹이 끊긴 차량의 마지막 추적 시간을 관리하는 딕셔너리
+lost_tracking_time: dict[int, float] = {}
+
+
 ### 함수 선언 ###
 
 # 쓰레드에서 실행 되는 메인 함수
@@ -724,6 +725,10 @@ def init(yolo_data_queue: Queue[dict[int, tuple[float, float]]]):
             if moving_space.is_car_in_space(value[0], value[1]):
                 print(moving_space.name, "구역", end=", ")
                 matching_moving_space_id = moving_space_id
+        
+        # 구역 내에 존재하지 않는 경우　
+        if matching_parking_space_id is None and matching_moving_space_id is None:
+            continue
 
         if matching_parking_space_id in parking_space_with_car_number:
             car_number = parking_space_with_car_number[matching_parking_space_id]
@@ -807,6 +812,10 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
                 car = car_number_instances[car_id]  # 차량 인스턴스
                 car.update_position(position)
 
+                # 추적이 복구된 차량은 lost_tracking_time에서 제거
+                if car_id in lost_tracking_time:
+                    del lost_tracking_time[car_id]
+
                 if len(car.route) != 0:
                     print(f"{car.car_id}번 루트: {car.route}")
                 
@@ -833,10 +842,27 @@ def roop(yolo_data_queue: Queue[dict[int, tuple[float, float]]], car_number_data
             elif moving_space_instances[15].is_car_in_space(position[0], position[1]) and car_number_data_queue.qsize() > 0:
                 entry(car_id, car_number_data_queue, position, car_number_response_queue)
 
-        # car_number_instances에 있으나 car_tracks에 없는 차량 삭제 (추적이 끊긴 차량)
-        for car_id in car_number_instances.keys():
+        # car_number_instances에 있으나 car_tracks에 없는 차량 처리 (추적이 끊긴 차량)
+        current_time = time.time()
+        cars_to_delete = []
+
+        for car_id in list(car_number_instances.keys()):
             if car_id not in car_tracks:
-                car_number_instances[car_id].delete_car()
+                # 처음 추적이 끊긴 경우 현재 시간 기록
+                if car_id not in lost_tracking_time:
+                    lost_tracking_time[car_id] = current_time
+                    print(f"차량 {car_id}번 추적 끊김 - 3초 대기 중...")
+
+                # 추적이 끊긴지 3초가 지난 경우 삭제
+                elif current_time - lost_tracking_time[car_id] >= 3.0:
+                    print(f"차량 {car_id}번 3초 경과로 삭제")
+                    cars_to_delete.append(car_id)
+
+        # 삭제 대상 차량 처리
+        for car_id in cars_to_delete:
+            car_number_instances[car_id].delete_car()
+            del car_number_instances[car_id]
+            del lost_tracking_time[car_id]
 
         # 차량 데이터 전송 (cars: 차량 정보, parking: 주차 구역 정보, moving: 이동 구역 정보)
         # MappingProxyType을 사용하여 read-only view 생성 (메모리 효율적)
